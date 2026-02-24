@@ -1,4 +1,29 @@
 services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    environment:
+      - DATABASE_URL=postgresql://installplan:installplan_secret@postgres:5432/installationsplan?schema=public
+      - AUTH_SECRET=${AUTH_SECRET}
+      - AUTH_URL=http://localhost:3100
+      - REDIS_URL=redis://redis:6379
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin_secret
+      - MINIO_BUCKET=installationsplan
+      - MINIO_USE_SSL=false
+      - NEXT_PUBLIC_APP_URL=http://localhost:3100
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -7,15 +32,20 @@ services:
       POSTGRES_PASSWORD: installplan_secret
       POSTGRES_DB: installationsplan
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U installplan -d installationsplan"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
 
@@ -26,8 +56,8 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin_secret
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9002:9000"
+      - "9003:9001"
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
