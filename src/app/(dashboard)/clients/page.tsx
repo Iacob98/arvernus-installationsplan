@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { getClients } from "@/lib/actions/clients";
 import { Button } from "@/components/ui/button";

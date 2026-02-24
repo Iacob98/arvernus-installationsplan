@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { notFound } from "next/navigation";
 import { renderPdfHtml } from "@/lib/pdf/renderer";
 import { auth } from "@/lib/auth";
