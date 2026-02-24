@@ -114,7 +114,7 @@ export default function NewProjectPage() {
 
             <div className="space-y-2">
               <Label>Kunde</Label>
-              <Select onValueChange={onClientChange} value={selectedClientId}>
+              <Select onValueChange={onClientChange} value={selectedClientId ?? ""}>
                 <SelectTrigger>
                   <SelectValue placeholder="Kunde auswählen" />
                 </SelectTrigger>

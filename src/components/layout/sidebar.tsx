@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import logoImg from "@/../public/logo.png";
 import { cn } from "@/lib/utils";
 import {
   FolderOpen,
@@ -59,13 +60,10 @@ function LogoBlock() {
     <div className="p-4 border-b">
       <Link href="/projects" className="flex items-center gap-2">
         <Image
-          src="/logo.png"
+          src={logoImg}
           alt="Arvernus Meisterbetrieb"
-          width={200}
-          height={60}
           className="h-10 md:h-12 w-auto"
           priority
-          unoptimized
         />
       </Link>
     </div>

@@ -94,6 +94,8 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    const stack = error instanceof Error ? error.stack : "";
+    console.error("[PDF Generate] Failed:", message, "\n", stack);
 
     await db.document.update({
       where: { id: document.id },
