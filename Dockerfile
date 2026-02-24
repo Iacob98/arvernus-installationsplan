@@ -20,7 +20,7 @@ RUN npm run build
 FROM node:20-slim AS runner
 ENV NODE_ENV=production
 
-# Install Playwright Chromium dependencies + Chromium
+# Install system deps for Playwright Chromium
 RUN apt-get update && apt-get install -y \
     openssl \
     libnss3 \
@@ -50,13 +50,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/playwright-core ./node_modules/playwright-core
-COPY --from=builder /app/node_modules/playwright ./node_modules/playwright
 COPY --from=builder /app/prisma ./prisma
 
-# Install Playwright browsers as nextjs user
+# Install playwright and download Chromium
+RUN npm install playwright@latest && npx playwright install chromium
+
 USER nextjs
-RUN npx playwright install chromium
 
 EXPOSE 3100
 ENV PORT=3100
