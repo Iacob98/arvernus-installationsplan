@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  TECHNICIAN
+  VIEWER
+}
+
+enum ProjectStatus {
+  DRAFT
+  IN_PROGRESS
+  REVIEW
+  COMPLETED
+  ARCHIVED
+}
+
+enum SectionType {
+  TITLE_PAGE
+  INSTALLATION_PROCESS
+  CLIENT_PREPARATION
+  TECHNICAL_PLANNING
+  INSTALLATION_SITE
+  EXISTING_SYSTEM
+  HEATING_CIRCUITS
+  HYDRAULICS
+  PIPING
+  ELECTRICAL_PLANNING
+  TARIFF_METER
+  PANEL_REPLACEMENT
+  CABLE_ROUTES
+  CONTROL_CABINET
+  ADDITIONAL_EQUIPMENT
+  CONSENT
+}
+
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  role          Role      @default(TECHNICIAN)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  projects      Project[]
+  documents     Document[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Client {
+  id              String    @id @default(cuid())
+  customerNumber  String    @unique
+  salutation      String?
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  street          String
+  houseNumber     String
+  postalCode      String
+  city            String
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  projects        Project[]
+
+  @@map("clients")
+}
+
+model Project {
+  id              String         @id @default(cuid())
+  projectNumber   String         @unique
+  title           String
+  status          ProjectStatus  @default(DRAFT)
+
+  street          String
+  houseNumber     String
+  postalCode      String
+  city            String
+
+  installationDate DateTime?
+  completionDate   DateTime?
+  notes            String?
+
+  clientId        String
+  client          Client         @relation(fields: [clientId], references: [id])
+
+  createdById     String
+  createdBy       User           @relation(fields: [createdById], references: [id])
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  sections        ProjectSection[]
+  documents       Document[]
+  heatingCircuits HeatingCircuitItem[]
+
+  @@map("projects")
+}
+
+model ProjectSection {
+  id          String      @id @default(cuid())
+  type        SectionType
+  order       Int
+  data        Json        @default("{}")
+  completed   Boolean     @default(false)
+
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  photos      Photo[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([projectId, type])
+  @@map("project_sections")
+}
+
+model Photo {
+  id            String    @id @default(cuid())
+  fileName      String
+  storagePath   String
+  thumbnailPath String?
+  mimeType      String
+  size          Int
+  width         Int?
+  height        Int?
+  annotations   Json      @default("[]")
+  caption       String?
+  order         Int       @default(0)
+
+  sectionId     String
+  section       ProjectSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  heatingCircuitItemId String?
+  heatingCircuitItem   HeatingCircuitItem? @relation(fields: [heatingCircuitItemId], references: [id])
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("photos")
+}
+
+model HeatingCircuitItem {
+  id           String    @id @default(cuid())
+  number       Int
+  floor        String
+  room         String
+  radiatorType String?
+  model        String?
+  power        Float?
+  notes        String?
+
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  photos       Photo[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("heating_circuit_items")
+}
+
+model Document {
+  id           String         @id @default(cuid())
+  fileName     String
+  storagePath  String
+  size         Int
+  version      Int            @default(1)
+  status       DocumentStatus @default(PENDING)
+  errorMessage String?
+
+  projectId    String
+  project      Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  generatedById String
+  generatedBy   User          @relation(fields: [generatedById], references: [id])
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@map("documents")
+}
+
+model PdfTemplate {
+  id            String  @id @default(cuid())
+  name          String  @unique
+  headerHtml    String  @default("")
+  footerHtml    String  @default("")
+  css           String  @default("")
+  sectionConfig Json    @default("[]")
+  isDefault     Boolean @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("pdf_templates")
+}
+
+model CompanySettings {
+  id             String  @id @default(cuid())
+  name           String
+  street         String
+  postalCode     String
+  city           String
+  phone          String?
+  email          String?
+  website        String?
+  logoPath       String?
+  primaryColor   String  @default("#1a1a2e")
+  secondaryColor String  @default("#e94560")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("company_settings")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String
+  details   Json     @default("{}")
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}
