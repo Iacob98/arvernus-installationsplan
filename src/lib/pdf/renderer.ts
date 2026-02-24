@@ -512,6 +512,9 @@ function renderSection(
             <p class="signature-label">Unterschrift Techniker</p>
           </div>
         </div>
+        <div class="callout-box" style="margin-top:30px;font-size:8.5pt;color:#666;">
+          <strong>Hinweis:</strong> Die Unterzeichnung dieses Installationsplans stellt keine Kaufverpflichtung dar. Sie bestätigt lediglich die Kenntnisnahme und Richtigkeit der geplanten technischen Umsetzung.
+        </div>
         ${renderNotes(str(data.notes))}
       </div>`;
 
