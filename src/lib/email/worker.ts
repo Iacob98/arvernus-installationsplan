@@ -13,12 +13,6 @@ async function processCampaignEmailJob(
   const { emailLogId, campaignId, to, subject, htmlContent, images } = job.data;
 
   try {
-    // Fetch clientId from the EmailLog for unsubscribe link
-    const emailLog = await db.emailLog.findUnique({
-      where: { id: emailLogId },
-      select: { clientId: true },
-    });
-
     const attachments = await Promise.all(
       images.map(async (img) => ({
         filename: img.filename,
@@ -29,20 +23,17 @@ async function processCampaignEmailJob(
     );
 
     // Append unsubscribe footer to campaign emails
-    let finalHtml = htmlContent;
-    const headers: Record<string, string> = {};
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const unsubscribeUrl = `${appUrl}/unsubscribe`;
 
-    if (emailLog?.clientId) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      const unsubscribeUrl = `${appUrl}/api/unsubscribe/${emailLog.clientId}`;
-
-      finalHtml += `<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;text-align:center;font-size:12px;color:#6b7280">
+    const finalHtml = htmlContent + `<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;text-align:center;font-size:12px;color:#6b7280">
   <a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline">Abmelden</a>
 </div>`;
 
-      headers["List-Unsubscribe"] = `<${unsubscribeUrl}>`;
-      headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
-    }
+    const headers: Record<string, string> = {
+      "List-Unsubscribe": `<${unsubscribeUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    };
 
     await smtpTransporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
