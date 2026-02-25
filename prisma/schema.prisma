@@ -48,6 +48,36 @@ enum DocumentStatus {
   FAILED
 }
 
+enum ClientStatus {
+  IN_BEARBEITUNG
+  VERKAUFT
+  NICHT_VERKAUFT
+}
+
+enum ClientSubstatus {
+  IN_KONTAKT
+  ANGEBOT_VERSENDET
+  NICHT_ERREICHBAR
+}
+
+enum DealProbability {
+  NIEDRIG
+  MITTEL
+  HOCH
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SENDING
+  COMPLETED
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -61,13 +91,15 @@ model User {
   projects      Project[]
   documents     Document[]
   auditLogs     AuditLog[]
+  emailLogs     EmailLog[]
+  campaigns     Campaign[]
 
   @@map("users")
 }
 
 model Client {
-  id              String    @id @default(cuid())
-  customerNumber  String    @unique
+  id              String            @id @default(cuid())
+  customerNumber  String            @unique
   salutation      String?
   firstName       String
   lastName        String
@@ -78,10 +110,16 @@ model Client {
   postalCode      String
   city            String
   notes           String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  status          ClientStatus      @default(IN_BEARBEITUNG)
+  substatus       ClientSubstatus?
+  dealProbability DealProbability?
+  source          String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   projects        Project[]
+  reminders       Reminder[]
+  emailLogs       EmailLog[]
 
   @@map("clients")
 }
@@ -252,4 +290,109 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([userId])
   @@map("audit_logs")
+}
+
+model Reminder {
+  id          String   @id @default(cuid())
+  date        DateTime
+  description String
+  completed   Boolean  @default(false)
+
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([date])
+  @@map("reminders")
+}
+
+model EmailLog {
+  id         String      @id @default(cuid())
+  subject    String
+  body       String
+  recipients String[]
+  status     EmailStatus @default(PENDING)
+
+  clientId   String?
+  client     Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  sentById   String
+  sentBy     User        @relation(fields: [sentById], references: [id])
+
+  campaignId String?
+  campaign   Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([clientId])
+  @@index([campaignId])
+  @@map("email_logs")
+}
+
+model ImapProcessedEmail {
+  id          String   @id @default(cuid())
+  messageId   String   @unique
+  subject     String?
+  fromAddress String?
+
+  clientId    String?
+
+  createdAt   DateTime @default(now())
+
+  @@map("imap_processed_emails")
+}
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  subject     String
+  htmlContent String
+  htmlCid     String
+
+  images      EmailTemplateImage[]
+  campaigns   Campaign[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("email_templates")
+}
+
+model EmailTemplateImage {
+  id          String @id @default(cuid())
+  filename    String
+  storagePath String
+  cid         String
+  mimeType    String
+
+  templateId  String
+  template    EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@map("email_template_images")
+}
+
+model Campaign {
+  id             String         @id @default(cuid())
+  name           String
+  status         CampaignStatus @default(DRAFT)
+  recipientCount Int            @default(0)
+  sentCount      Int            @default(0)
+  failedCount    Int            @default(0)
+
+  templateId     String
+  template       EmailTemplate  @relation(fields: [templateId], references: [id])
+
+  createdById    String
+  createdBy      User           @relation(fields: [createdById], references: [id])
+
+  emailLogs      EmailLog[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("campaigns")
 }

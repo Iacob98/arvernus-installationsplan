@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   FolderOpen,
   Users,
+  Megaphone,
   Settings,
   Menu,
   X,
@@ -24,6 +25,7 @@ import { useState } from "react";
 const navItems = [
   { href: "/projects", label: "Projekte", icon: FolderOpen },
   { href: "/clients", label: "Kunden", icon: Users },
+  { href: "/campaigns", label: "Kampagnen", icon: Megaphone },
   { href: "/settings", label: "Einstellungen", icon: Settings },
 ];
 
