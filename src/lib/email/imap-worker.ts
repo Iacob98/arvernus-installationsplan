@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { redis, ImapJobData } from "@/lib/queue";
 
 interface ParsedContact {
+  salutation?: string;
   firstName: string;
   lastName: string;
   email?: string;
@@ -17,13 +18,15 @@ interface ParsedContact {
 }
 
 function parseContactForm(text: string): ParsedContact | null {
-  const nameMatch = text.match(/(?:Name|Vorname.*?Nachname)\s*[:=]\s*(.+)/i);
-  const emailMatch = text.match(/(?:E-?Mail|Email)\s*[:=]\s*(\S+@\S+)/i);
-  const phoneMatch = text.match(/(?:Telefon|Tel|Phone)\s*[:=]\s*([+\d\s()-]+)/i);
-  const addressMatch = text.match(/(?:Adresse|Address|Straße)\s*[:=]\s*(.+)/i);
-  const messageMatch = text.match(/(?:Nachricht|Message|Anmerkung|Kommentar)\s*[:=]\s*([\s\S]*?)(?:\n\s*\n|$)/i);
-  const plzMatch = text.match(/(?:PLZ|Postleitzahl)\s*[:=]\s*(\d{4,5})/i);
-  const cityMatch = text.match(/(?:Stadt|Ort|City)\s*[:=]\s*(.+)/i);
+  // [:=\t] — support colon, equals, and tab separators (HTML table → text uses tabs)
+  const nameMatch = text.match(/(?:Name|Vorname.*?Nachname)\s*[:=\t]\s*(.+)/i);
+  const emailMatch = text.match(/(?:E-?Mail|Email)\s*[:=\t]\s*(\S+@\S+)/i);
+  const phoneMatch = text.match(/(?:Telefon|Tel|Phone)\s*[:=\t]\s*([+\d\s()-]+)/i);
+  const addressMatch = text.match(/(?:Adresse|Address|Straße)\s*[:=\t]\s*(.+)/i);
+  const messageMatch = text.match(/(?:Nachricht|Message|Anmerkung|Kommentar)\s*[:=\t]\s*([\s\S]*?)(?:\n\s*\n|$)/i);
+  const plzMatch = text.match(/(?:PLZ|Postleitzahl)\s*[:=\t]\s*(\d{4,5})/i);
+  const cityMatch = text.match(/(?:Stadt|Ort|City)\s*[:=\t]\s*(.+)/i);
+  const anredeMatch = text.match(/Anrede\s*[:=\t]\s*(.+)/i);
 
   if (!nameMatch) return null;
 
@@ -44,7 +47,11 @@ function parseContactForm(text: string): ParsedContact | null {
     }
   }
 
+  const rawAnrede = anredeMatch?.[1]?.trim().toLowerCase();
+  const salutation = rawAnrede === "herr" ? "Herr" : rawAnrede === "frau" ? "Frau" : undefined;
+
   return {
+    salutation,
     firstName,
     lastName,
     email: emailMatch?.[1]?.trim(),
@@ -119,6 +126,7 @@ async function processImapJob(job: Job<ImapJobData>) {
           const newClient = await db.client.create({
             data: {
               customerNumber,
+              salutation: contact.salutation || null,
               firstName: contact.firstName,
               lastName: contact.lastName,
               email: contact.email || "",
