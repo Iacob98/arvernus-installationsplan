@@ -60,4 +60,4 @@ USER nextjs
 EXPOSE 3100
 ENV PORT=3100
 ENV HOSTNAME="0.0.0.0"
-CMD ["node", "server.js"]
+CMD npx prisma migrate deploy && node server.js
