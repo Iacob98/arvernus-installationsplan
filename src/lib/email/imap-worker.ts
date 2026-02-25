@@ -30,27 +30,85 @@ function parseHtmlTable(html: string): Record<string, string> {
   return fields;
 }
 
-function parseContactFromFields(fields: Record<string, string>): ParsedContact | null {
-  const name = fields["name"];
-  if (!name) return null;
+// Extract salutation from name if embedded (e.g. "herr Max Mustermann")
+function extractSalutationFromName(name: string): { salutation?: string; cleanName: string } {
+  const lower = name.trim().toLowerCase();
+  if (lower.startsWith("herr ")) return { salutation: "Herr", cleanName: name.trim().slice(5) };
+  if (lower.startsWith("frau ")) return { salutation: "Frau", cleanName: name.trim().slice(5) };
+  return { cleanName: name.trim() };
+}
 
-  const nameParts = name.trim().split(/\s+/);
+// Parse combined address: "Straße Nr, PLZ Stadt"
+function parseFullAddress(address: string): { street: string; houseNumber: string; postalCode: string; city: string } {
+  // Try "street houseNumber, postalCode city"
+  const combined = address.match(/^(.+?)\s+(\d+\s*\w?)\s*,\s*(\d{4,5})\s+(.+)$/);
+  if (combined) {
+    return { street: combined[1], houseNumber: combined[2], postalCode: combined[3], city: combined[4] };
+  }
+  // Try "street houseNumber" without PLZ/city
+  const simple = address.match(/^(.+?)\s+(\d+\s*\w?)$/);
+  if (simple) {
+    return { street: simple[1], houseNumber: simple[2], postalCode: "", city: "" };
+  }
+  return { street: address, houseNumber: "", postalCode: "", city: "" };
+}
+
+// Fields that belong to the Rechner (calculator) form, not contact info
+const RECHNER_FIELDS = new Set([
+  "gebäudetyp", "eigentümer", "baujahr", "wohnfläche", "dämmung", "fenster",
+  "aktuelle heizung", "heizungsalter", "warmwasser", "wärmepumpentyp",
+  "photovoltaik", "zeitrahmen",
+]);
+
+function parseContactFromFields(fields: Record<string, string>, isRechner: boolean): ParsedContact | null {
+  const rawName = fields["name"];
+  if (!rawName) return null;
+
+  // Handle salutation: separate "anrede" field or embedded in name
+  let salutation: string | undefined;
+  let cleanName: string;
+
+  if (fields["anrede"]) {
+    const raw = fields["anrede"].toLowerCase();
+    salutation = raw === "herr" ? "Herr" : raw === "frau" ? "Frau" : undefined;
+    cleanName = rawName.trim();
+  } else {
+    const extracted = extractSalutationFromName(rawName);
+    salutation = extracted.salutation;
+    cleanName = extracted.cleanName;
+  }
+
+  const nameParts = cleanName.split(/\s+/);
   const firstName = nameParts[0] || "Unbekannt";
   const lastName = nameParts.slice(1).join(" ") || "Unbekannt";
 
-  const rawAnrede = fields["anrede"]?.toLowerCase();
-  const salutation = rawAnrede === "herr" ? "Herr" : rawAnrede === "frau" ? "Frau" : undefined;
+  // Parse address
+  let street = "-";
+  let houseNumber = "-";
+  let postalCode = fields["plz"] || fields["postleitzahl"] || "";
+  let city = fields["stadt"] || fields["ort"] || fields["city"] || "";
 
-  const address = fields["adresse"] || fields["straße"] || "";
-  let street = "";
-  let houseNumber = "";
-  if (address) {
-    const addrParts = address.match(/^(.+?)\s+(\d+\s*\w?)$/);
-    if (addrParts) {
-      street = addrParts[1];
-      houseNumber = addrParts[2];
-    } else {
-      street = address;
+  const rawAddress = fields["adresse"] || fields["straße"] || "";
+  if (rawAddress) {
+    const addr = parseFullAddress(rawAddress);
+    street = addr.street || "-";
+    houseNumber = addr.houseNumber || "-";
+    if (addr.postalCode) postalCode = addr.postalCode;
+    if (addr.city) city = addr.city;
+  }
+
+  // Build notes: user message + Rechner details
+  const parts: string[] = [];
+  const userMessage = fields["nachricht"] || fields["message"] || fields["anmerkung"] || fields["kommentar"];
+  if (userMessage) parts.push(userMessage);
+
+  if (isRechner) {
+    const rechnerLines: string[] = [];
+    for (const key of RECHNER_FIELDS) {
+      if (fields[key]) rechnerLines.push(`${key.charAt(0).toUpperCase() + key.slice(1)}: ${fields[key]}`);
+    }
+    if (rechnerLines.length > 0) {
+      parts.push("--- Wärmepumpen-Rechner ---\n" + rechnerLines.join("\n"));
     }
   }
 
@@ -60,20 +118,20 @@ function parseContactFromFields(fields: Record<string, string>): ParsedContact |
     lastName,
     email: fields["e-mail"] || fields["email"],
     phone: fields["telefon"] || fields["tel"] || fields["phone"],
-    street: street || "-",
-    houseNumber: houseNumber || "-",
-    postalCode: fields["plz"] || fields["postleitzahl"] || "00000",
-    city: fields["stadt"] || fields["ort"] || fields["city"] || "-",
-    message: fields["nachricht"] || fields["message"] || fields["anmerkung"] || fields["kommentar"],
+    street,
+    houseNumber,
+    postalCode: postalCode || "00000",
+    city: city || "-",
+    message: parts.join("\n\n") || undefined,
   };
 }
 
-function parseContactForm(text: string, html?: string): ParsedContact | null {
+function parseContactForm(text: string, html?: string, isRechner = false): ParsedContact | null {
   // Try HTML table parsing first (most reliable for form emails)
   if (html) {
     const fields = parseHtmlTable(html);
     if (Object.keys(fields).length > 0) {
-      const result = parseContactFromFields(fields);
+      const result = parseContactFromFields(fields, isRechner);
       if (result) return result;
     }
   }
@@ -176,9 +234,39 @@ async function processImapJob(job: Job<ImapJobData>) {
 
         if (!msg.source) continue;
         const parsed = await simpleParser(msg.source);
+        const subject = parsed.subject || "";
+
+        // Skip Partneranfragen — not a client
+        if (/partneranfrage/i.test(subject)) {
+          await db.imapProcessedEmail.create({
+            data: {
+              messageId,
+              subject,
+              fromAddress: parsed.from?.value?.[0]?.address || null,
+            },
+          });
+          continue;
+        }
+
+        // Detect email type
+        const isRechner = /rechner/i.test(subject);
+        const isContactForm = isRechner || /kontaktanfrage/i.test(subject);
+
+        if (!isContactForm) {
+          // Unknown email type — record but skip
+          await db.imapProcessedEmail.create({
+            data: {
+              messageId,
+              subject,
+              fromAddress: parsed.from?.value?.[0]?.address || null,
+            },
+          });
+          continue;
+        }
+
         const textBody = parsed.text || "";
         const htmlBody = parsed.html || undefined;
-        const contact = parseContactForm(textBody, htmlBody);
+        const contact = parseContactForm(textBody, htmlBody, isRechner);
 
         let clientId: string | undefined;
 
