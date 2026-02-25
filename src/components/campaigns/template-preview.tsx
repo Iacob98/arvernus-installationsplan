@@ -28,12 +28,13 @@ export function TemplatePreview({ id, name, subject, htmlContent, images }: Prop
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 
-  // Replace cid: references with presigned URLs for preview
+  // Replace cid: references with internal API URLs for preview (avoids mixed content)
   let previewHtml = htmlContent;
   for (const img of images) {
+    const apiUrl = `/api/campaigns/templates/${id}/images/${encodeURIComponent(img.filename)}`;
     previewHtml = previewHtml.replace(
       new RegExp(`src=["']cid:${img.cid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`, "g"),
-      `src="${img.url}"`
+      `src="${apiUrl}"`
     );
   }
 
@@ -83,7 +84,7 @@ export function TemplatePreview({ id, name, subject, htmlContent, images }: Prop
         <CardContent>
           <iframe
             srcDoc={previewHtml}
-            sandbox=""
+            sandbox="allow-same-origin"
             className="w-full h-[600px] border rounded"
             title="Vorlagen-Vorschau"
           />
