@@ -6,7 +6,7 @@ import { ClientStatus, ClientSubstatus, DealProbability } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Mail, Phone, MapPin } from "lucide-react";
-import { updateClientStatus } from "@/lib/actions/clients";
+import { updateClientStatus, type ClientDetail } from "@/lib/actions/clients";
 import { ClientStatusSelect } from "./client-status-select";
 import { DealProbabilitySelect } from "./deal-probability-select";
 import { ReminderSection } from "./reminder-section";
@@ -15,44 +15,7 @@ import { EmailLogSection } from "./email-log-section";
 import { toast } from "sonner";
 
 interface ClientDetailContentProps {
-  client: {
-    id: string;
-    salutation: string | null;
-    firstName: string;
-    lastName: string;
-    email: string | null;
-    phone: string | null;
-    street: string;
-    houseNumber: string;
-    postalCode: string;
-    city: string;
-    status: ClientStatus;
-    substatus: ClientSubstatus | null;
-    dealProbability: DealProbability | null;
-    source: string | null;
-    notes: string | null;
-    projects: {
-      id: string;
-      title: string;
-      projectNumber: string;
-      createdBy: { name: string };
-    }[];
-    reminders: {
-      id: string;
-      date: Date;
-      description: string;
-      completed: boolean;
-    }[];
-    emailLogs: {
-      id: string;
-      subject: string;
-      body: string;
-      recipients: string[];
-      status: "PENDING" | "SENT" | "FAILED";
-      createdAt: Date;
-      sentBy: { name: string };
-    }[];
-  };
+  client: ClientDetail;
 }
 
 export function ClientDetailContent({ client }: ClientDetailContentProps) {

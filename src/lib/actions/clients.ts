@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { clientSchema, ClientFormData } from "@/lib/validations/client";
 import { revalidatePath } from "next/cache";
-import { ClientStatus } from "@prisma/client";
+import { ClientStatus, Prisma } from "@prisma/client";
 
 export async function getClients(search?: string, statusFilter?: ClientStatus) {
   const where: Record<string, unknown> = {};
@@ -59,23 +59,27 @@ export async function getClientCounts() {
   return { total, inBearbeitung, verkauft, nichtVerkauft };
 }
 
-export async function getClient(id: string) {
+const clientDetailInclude = {
+  projects: {
+    orderBy: { updatedAt: "desc" as const },
+    include: { createdBy: { select: { name: true } } },
+  },
+  reminders: {
+    orderBy: { date: "asc" as const },
+  },
+  emailLogs: {
+    orderBy: { createdAt: "desc" as const },
+    take: 20,
+    include: { sentBy: { select: { name: true } } },
+  },
+} satisfies Prisma.ClientInclude;
+
+export type ClientDetail = Prisma.ClientGetPayload<{ include: typeof clientDetailInclude }>;
+
+export async function getClient(id: string): Promise<ClientDetail | null> {
   return db.client.findUnique({
     where: { id },
-    include: {
-      projects: {
-        orderBy: { updatedAt: "desc" },
-        include: { createdBy: { select: { name: true } } },
-      },
-      reminders: {
-        orderBy: { date: "asc" },
-      },
-      emailLogs: {
-        orderBy: { createdAt: "desc" },
-        take: 20,
-        include: { sentBy: { select: { name: true } } },
-      },
-    },
+    include: clientDetailInclude,
   });
 }
 
