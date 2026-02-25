@@ -4,8 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClient } from "@/lib/actions/clients";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Mail, Phone, MapPin } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { ClientDetailContent } from "@/components/clients/client-detail-content";
 
 export default async function ClientDetailPage({
@@ -32,6 +31,12 @@ export default async function ClientDetailPage({
           </h1>
           <p className="text-muted-foreground">{client.customerNumber}</p>
         </div>
+        <Link href={`/clients/${clientId}/edit`}>
+          <Button variant="outline" size="sm">
+            <Pencil className="h-4 w-4 mr-1" />
+            Bearbeiten
+          </Button>
+        </Link>
       </div>
 
       <ClientDetailContent client={client} />

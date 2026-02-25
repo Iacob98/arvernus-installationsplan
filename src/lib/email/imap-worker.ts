@@ -17,16 +17,77 @@ interface ParsedContact {
   message?: string;
 }
 
-function parseContactForm(text: string): ParsedContact | null {
-  // [:=\t] — support colon, equals, and tab separators (HTML table → text uses tabs)
-  const nameMatch = text.match(/(?:Name|Vorname.*?Nachname)\s*[:=\t]\s*(.+)/i);
-  const emailMatch = text.match(/(?:E-?Mail|Email)\s*[:=\t]\s*(\S+@\S+)/i);
-  const phoneMatch = text.match(/(?:Telefon|Tel|Phone)\s*[:=\t]\s*([+\d\s()-]+)/i);
-  const addressMatch = text.match(/(?:Adresse|Address|Straße)\s*[:=\t]\s*(.+)/i);
-  const messageMatch = text.match(/(?:Nachricht|Message|Anmerkung|Kommentar)\s*[:=\t]\s*([\s\S]*?)(?:\n\s*\n|$)/i);
-  const plzMatch = text.match(/(?:PLZ|Postleitzahl)\s*[:=\t]\s*(\d{4,5})/i);
-  const cityMatch = text.match(/(?:Stadt|Ort|City)\s*[:=\t]\s*(.+)/i);
-  const anredeMatch = text.match(/Anrede\s*[:=\t]\s*(.+)/i);
+// Parse HTML table: extract key-value pairs from <td>label</td><td>value</td>
+function parseHtmlTable(html: string): Record<string, string> {
+  const fields: Record<string, string> = {};
+  const rowRegex = /<tr[^>]*>\s*<td[^>]*>([\s\S]*?)<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>\s*<\/tr>/gi;
+  let match;
+  while ((match = rowRegex.exec(html)) !== null) {
+    const key = match[1].replace(/<[^>]*>/g, "").trim();
+    const value = match[2].replace(/<[^>]*>/g, "").trim();
+    if (key && value) fields[key.toLowerCase()] = value;
+  }
+  return fields;
+}
+
+function parseContactFromFields(fields: Record<string, string>): ParsedContact | null {
+  const name = fields["name"];
+  if (!name) return null;
+
+  const nameParts = name.trim().split(/\s+/);
+  const firstName = nameParts[0] || "Unbekannt";
+  const lastName = nameParts.slice(1).join(" ") || "Unbekannt";
+
+  const rawAnrede = fields["anrede"]?.toLowerCase();
+  const salutation = rawAnrede === "herr" ? "Herr" : rawAnrede === "frau" ? "Frau" : undefined;
+
+  const address = fields["adresse"] || fields["straße"] || "";
+  let street = "";
+  let houseNumber = "";
+  if (address) {
+    const addrParts = address.match(/^(.+?)\s+(\d+\s*\w?)$/);
+    if (addrParts) {
+      street = addrParts[1];
+      houseNumber = addrParts[2];
+    } else {
+      street = address;
+    }
+  }
+
+  return {
+    salutation,
+    firstName,
+    lastName,
+    email: fields["e-mail"] || fields["email"],
+    phone: fields["telefon"] || fields["tel"] || fields["phone"],
+    street: street || "-",
+    houseNumber: houseNumber || "-",
+    postalCode: fields["plz"] || fields["postleitzahl"] || "00000",
+    city: fields["stadt"] || fields["ort"] || fields["city"] || "-",
+    message: fields["nachricht"] || fields["message"] || fields["anmerkung"] || fields["kommentar"],
+  };
+}
+
+function parseContactForm(text: string, html?: string): ParsedContact | null {
+  // Try HTML table parsing first (most reliable for form emails)
+  if (html) {
+    const fields = parseHtmlTable(html);
+    if (Object.keys(fields).length > 0) {
+      const result = parseContactFromFields(fields);
+      if (result) return result;
+    }
+  }
+
+  // Fallback: parse plain text with flexible separators (colon, equals, tab, or 2+ spaces)
+  const sep = "(?:[:\\t=]|\\s{2,})";
+  const nameMatch = text.match(new RegExp("(?:Name|Vorname.*?Nachname)\\s*" + sep + "\\s*(.+)", "i"));
+  const emailMatch = text.match(new RegExp("(?:E-?Mail|Email)\\s*" + sep + "\\s*(\\S+@\\S+)", "i"));
+  const phoneMatch = text.match(new RegExp("(?:Telefon|Tel|Phone)\\s*" + sep + "\\s*([+\\d\\s()-]+)", "i"));
+  const addressMatch = text.match(new RegExp("(?:Adresse|Address|Straße)\\s*" + sep + "\\s*(.+)", "i"));
+  const messageMatch = text.match(new RegExp("(?:Nachricht|Message|Anmerkung|Kommentar)\\s*" + sep + "\\s*([\\s\\S]*?)(?:\\n\\s*\\n|$)", "i"));
+  const plzMatch = text.match(new RegExp("(?:PLZ|Postleitzahl)\\s*" + sep + "\\s*(\\d{4,5})", "i"));
+  const cityMatch = text.match(new RegExp("(?:Stadt|Ort|City)\\s*" + sep + "\\s*(.+)", "i"));
+  const anredeMatch = text.match(new RegExp("Anrede\\s*" + sep + "\\s*(.+)", "i"));
 
   if (!nameMatch) return null;
 
@@ -116,7 +177,8 @@ async function processImapJob(job: Job<ImapJobData>) {
         if (!msg.source) continue;
         const parsed = await simpleParser(msg.source);
         const textBody = parsed.text || "";
-        const contact = parseContactForm(textBody);
+        const htmlBody = parsed.html || undefined;
+        const contact = parseContactForm(textBody, htmlBody);
 
         let clientId: string | undefined;
 
