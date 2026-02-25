@@ -75,6 +75,12 @@ async function processImapJob(job: Job<ImapJobData>) {
     secure: port === 993,
     auth: { user, pass },
     logger: false,
+    socketTimeout: 30000,
+  });
+
+  // Prevent unhandled 'error' events from crashing the process
+  client.on("error", (err: Error) => {
+    console.error("IMAP connection error:", err.message);
   });
 
   let imported = 0;
@@ -155,7 +161,7 @@ async function processImapJob(job: Job<ImapJobData>) {
     await client.logout();
   } catch (error) {
     console.error("IMAP import error:", error);
-    try { await client.logout(); } catch {}
+    try { await client.close(); } catch {}
     throw error;
   }
 

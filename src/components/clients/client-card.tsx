@@ -22,6 +22,7 @@ interface ClientCardProps {
     substatus: ClientSubstatus | null;
     dealProbability: DealProbability | null;
     source: string | null;
+    unsubscribed: boolean;
     _count: { projects: number };
     reminders: { id: string; date: Date; completed: boolean }[];
   };
@@ -78,6 +79,11 @@ export function ClientCard({ client }: ClientCardProps) {
                         : "text-muted-foreground"
                   }`}
                 />
+              )}
+              {client.unsubscribed && (
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                  Abgemeldet
+                </Badge>
               )}
               {client.source === "website" && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">

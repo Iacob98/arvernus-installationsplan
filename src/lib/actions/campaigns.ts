@@ -100,7 +100,7 @@ export async function getRecipientCount(statusFilter?: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Nicht authentifiziert");
 
-  const where: Record<string, unknown> = { email: { not: "" } };
+  const where: Record<string, unknown> = { email: { not: "" }, unsubscribed: false };
   if (statusFilter && statusFilter !== "ALL") {
     where.status = statusFilter as ClientStatus;
   }
@@ -122,7 +122,7 @@ export async function createCampaign(data: CampaignCreateFormData) {
   if (!template) throw new Error("Vorlage nicht gefunden");
 
   // Fetch recipients
-  const clientWhere: Record<string, unknown> = { email: { not: "" } };
+  const clientWhere: Record<string, unknown> = { email: { not: "" }, unsubscribed: false };
   if (validated.statusFilter && validated.statusFilter !== "ALL") {
     clientWhere.status = validated.statusFilter as ClientStatus;
   }

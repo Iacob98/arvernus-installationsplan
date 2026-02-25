@@ -114,6 +114,7 @@ model Client {
   substatus       ClientSubstatus?
   dealProbability DealProbability?
   source          String?
+  unsubscribed    Boolean           @default(false)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 

@@ -1,12 +1,22 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ClientStatus, ClientSubstatus, DealProbability } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Phone, MapPin } from "lucide-react";
-import { updateClientStatus, type ClientDetail } from "@/lib/actions/clients";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Mail, Phone, MapPin, Trash2, MailX, MailCheck } from "lucide-react";
+import { updateClientStatus, deleteClient, toggleUnsubscribe, type ClientDetail } from "@/lib/actions/clients";
 import { ClientStatusSelect } from "./client-status-select";
 import { DealProbabilitySelect } from "./deal-probability-select";
 import { ReminderSection } from "./reminder-section";
@@ -19,7 +29,9 @@ interface ClientDetailContentProps {
 }
 
 export function ClientDetailContent({ client }: ClientDetailContentProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   function handleStatusChange(status: ClientStatus) {
     startTransition(async () => {
@@ -51,6 +63,35 @@ export function ClientDetailContent({ client }: ClientDetailContentProps) {
     });
   }
 
+  function handleDelete() {
+    startTransition(async () => {
+      try {
+        await deleteClient(client.id);
+        router.push("/clients");
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Fehler beim Löschen"
+        );
+        setShowDeleteDialog(false);
+      }
+    });
+  }
+
+  function handleToggleUnsubscribe() {
+    startTransition(async () => {
+      try {
+        await toggleUnsubscribe(client.id, !client.unsubscribed);
+        toast.success(
+          client.unsubscribed
+            ? "Kunde wieder für Kampagnen angemeldet"
+            : "Kunde von Kampagnen abgemeldet"
+        );
+      } catch {
+        toast.error("Fehler beim Aktualisieren");
+      }
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
@@ -69,6 +110,11 @@ export function ClientDetailContent({ client }: ClientDetailContentProps) {
               <div className="flex items-center gap-2 text-sm">
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 {client.email}
+                {client.unsubscribed && (
+                  <Badge variant="destructive" className="text-xs">
+                    Abgemeldet
+                  </Badge>
+                )}
               </div>
             )}
             {client.phone && (
@@ -153,6 +199,71 @@ export function ClientDetailContent({ client }: ClientDetailContentProps) {
 
       {/* Email Log */}
       <EmailLogSection emailLogs={client.emailLogs} />
+
+      {/* Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Aktionen</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isPending}
+            onClick={handleToggleUnsubscribe}
+          >
+            {client.unsubscribed ? (
+              <>
+                <MailCheck className="h-4 w-4 mr-2" />
+                Wieder anmelden
+              </>
+            ) : (
+              <>
+                <MailX className="h-4 w-4 mr-2" />
+                Von Kampagnen abmelden
+              </>
+            )}
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={isPending}
+            onClick={() => setShowDeleteDialog(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Löschen
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Kunde löschen?</DialogTitle>
+            <DialogDescription>
+              Möchten Sie {client.firstName} {client.lastName} wirklich löschen?
+              Diese Aktion kann nicht rückgängig gemacht werden.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isPending}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isPending}
+            >
+              {isPending ? "Wird gelöscht..." : "Löschen"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

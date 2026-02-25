@@ -148,3 +148,16 @@ export async function deleteClient(id: string) {
   await db.client.delete({ where: { id } });
   revalidatePath("/clients");
 }
+
+export async function toggleUnsubscribe(id: string, unsubscribed: boolean) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Nicht authentifiziert");
+
+  await db.client.update({
+    where: { id },
+    data: { unsubscribed },
+  });
+
+  revalidatePath("/clients");
+  revalidatePath(`/clients/${id}`);
+}
