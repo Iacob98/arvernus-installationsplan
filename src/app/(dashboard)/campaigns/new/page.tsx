@@ -10,7 +10,7 @@ export default async function NewCampaignPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Neue Kampagne</h1>
       <CampaignCreateForm
-        templates={templates.map((t) => ({
+        templates={templates.map((t: { id: string; name: string; subject: string }) => ({
           id: t.id,
           name: t.name,
           subject: t.subject,
