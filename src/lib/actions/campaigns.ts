@@ -53,6 +53,14 @@ export async function deleteTemplate(id: string) {
 
   if (!template) throw new Error("Vorlage nicht gefunden");
 
+  // Delete linked campaigns and their email logs first
+  const campaigns = await db.campaign.findMany({ where: { templateId: id }, select: { id: true } });
+  if (campaigns.length > 0) {
+    const campaignIds = campaigns.map((c) => c.id);
+    await db.emailLog.deleteMany({ where: { campaignId: { in: campaignIds } } });
+    await db.campaign.deleteMany({ where: { templateId: id } });
+  }
+
   // Delete images from storage
   for (const img of template.images) {
     try {
