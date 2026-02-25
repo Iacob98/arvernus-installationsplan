@@ -61,14 +61,12 @@ export async function POST(request: NextRequest) {
 
     imageRecords.push({ filename, storagePath, cid, mimeType });
 
-    // Replace src references: images/filename, ./images/filename, or just filename
-    const patterns = [
-      new RegExp(`src=["'](?:\.\/)?images\/${escapeRegex(filename)}["']`, "g"),
-      new RegExp(`src=["']${escapeRegex(filename)}["']`, "g"),
-    ];
-    for (const pattern of patterns) {
-      processedHtml = processedHtml.replace(pattern, `src="cid:${cid}"`);
-    }
+    // Replace any src attribute ending with this filename (handles all path variants)
+    const pattern = new RegExp(
+      `src=["'][^"']*${escapeRegex(filename)}["']`,
+      "g"
+    );
+    processedHtml = processedHtml.replace(pattern, `src="cid:${cid}"`);
   }
 
   // Batch create image records
