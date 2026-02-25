@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 
 export default function NewClientPage() {
@@ -28,13 +29,18 @@ export default function NewClientPage() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
     defaultValues: {
       customerNumber: `KD-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+      status: "IN_BEARBEITUNG",
+      substatus: "IN_KONTAKT",
     },
   });
+
+  const status = watch("status");
 
   async function onSubmit(data: ClientFormData) {
     setLoading(true);
@@ -42,7 +48,7 @@ export default function NewClientPage() {
       await createClient(data);
       toast.success("Kunde erstellt");
       router.push("/clients");
-    } catch (error) {
+    } catch {
       toast.error("Fehler beim Erstellen des Kunden");
     } finally {
       setLoading(false);
@@ -136,6 +142,88 @@ export default function NewClientPage() {
                 <Input {...register("city")} />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Status & Pipeline</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select
+                  defaultValue="IN_BEARBEITUNG"
+                  onValueChange={(v) => {
+                    setValue("status", v as ClientFormData["status"]);
+                    if (v !== "IN_BEARBEITUNG") {
+                      setValue("substatus", null);
+                      setValue("dealProbability", null);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="IN_BEARBEITUNG">In Bearbeitung</SelectItem>
+                    <SelectItem value="VERKAUFT">Verkauft</SelectItem>
+                    <SelectItem value="NICHT_VERKAUFT">Nicht verkauft</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {status === "IN_BEARBEITUNG" && (
+                <div className="space-y-2">
+                  <Label>Unterstatus</Label>
+                  <Select
+                    defaultValue="IN_KONTAKT"
+                    onValueChange={(v) =>
+                      setValue("substatus", v as ClientFormData["substatus"])
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="IN_KONTAKT">In Kontakt</SelectItem>
+                      <SelectItem value="ANGEBOT_VERSENDET">Angebot versendet</SelectItem>
+                      <SelectItem value="NICHT_ERREICHBAR">Nicht erreichbar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            {status === "IN_BEARBEITUNG" && (
+              <div className="space-y-2">
+                <Label>Wahrscheinlichkeit</Label>
+                <RadioGroup
+                  className="flex gap-4"
+                  onValueChange={(v) =>
+                    setValue("dealProbability", v as ClientFormData["dealProbability"])
+                  }
+                >
+                  <div className="flex items-center gap-1.5">
+                    <RadioGroupItem value="NIEDRIG" id="new-prob-low" />
+                    <Label htmlFor="new-prob-low" className="text-sm text-red-500 cursor-pointer">
+                      Niedrig
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <RadioGroupItem value="MITTEL" id="new-prob-mid" />
+                    <Label htmlFor="new-prob-mid" className="text-sm text-yellow-500 cursor-pointer">
+                      Mittel
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <RadioGroupItem value="HOCH" id="new-prob-high" />
+                    <Label htmlFor="new-prob-high" className="text-sm text-green-500 cursor-pointer">
+                      Hoch
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
           </CardContent>
         </Card>
 
