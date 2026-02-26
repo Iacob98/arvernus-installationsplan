@@ -49,6 +49,7 @@ enum DocumentStatus {
 }
 
 enum ClientStatus {
+  NEU
   IN_BEARBEITUNG
   VERKAUFT
   NICHT_VERKAUFT
@@ -88,11 +89,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  projects      Project[]
-  documents     Document[]
-  auditLogs     AuditLog[]
-  emailLogs     EmailLog[]
-  campaigns     Campaign[]
+  projects        Project[]
+  documents       Document[]
+  auditLogs       AuditLog[]
+  emailLogs       EmailLog[]
+  campaigns       Campaign[]
+  assignedClients Client[]         @relation("AssignedClients")
+  clientNotes     ClientNote[]     @relation("ClientNotes")
 
   @@map("users")
 }
@@ -110,7 +113,7 @@ model Client {
   postalCode      String
   city            String
   notes           String?
-  status          ClientStatus      @default(IN_BEARBEITUNG)
+  status          ClientStatus      @default(NEU)
   substatus       ClientSubstatus?
   dealProbability DealProbability?
   source          String?
@@ -118,9 +121,13 @@ model Client {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
+  assignedToId    String?
+  assignedTo      User?             @relation("AssignedClients", fields: [assignedToId], references: [id], onDelete: SetNull)
+
   projects        Project[]
   reminders       Reminder[]
   emailLogs       EmailLog[]
+  clientNotes     ClientNote[]
 
   @@map("clients")
 }
@@ -396,4 +403,17 @@ model Campaign {
   updatedAt      DateTime       @updatedAt
 
   @@map("campaigns")
+}
+
+model ClientNote {
+  id        String   @id @default(cuid())
+  content   String
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation("ClientNotes", fields: [authorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+  @@map("client_notes")
 }

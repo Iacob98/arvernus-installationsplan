@@ -2,12 +2,28 @@
 
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { requireAdmin, requireAuth } from "@/lib/auth-utils";
 import { clientSchema, ClientFormData } from "@/lib/validations/client";
 import { revalidatePath } from "next/cache";
 import { ClientStatus, Prisma } from "@prisma/client";
 
-export async function getClients(search?: string, statusFilter?: ClientStatus) {
+export async function getClients(search?: string, statusFilter?: ClientStatus, assignedToFilter?: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Nicht authentifiziert");
+
   const where: Record<string, unknown> = {};
+
+  // Non-admin users see only their assigned clients
+  if (session.user.role !== "ADMIN") {
+    where.assignedToId = session.user.id;
+  } else if (assignedToFilter && assignedToFilter !== "ALL") {
+    // Admin filtering by user
+    if (assignedToFilter === "UNASSIGNED") {
+      where.assignedToId = null;
+    } else {
+      where.assignedToId = assignedToFilter;
+    }
+  }
 
   if (statusFilter) {
     where.status = statusFilter;
@@ -32,6 +48,7 @@ export async function getClients(search?: string, statusFilter?: ClientStatus) {
         where: { completed: false },
         orderBy: { date: "asc" },
       },
+      assignedTo: { select: { id: true, name: true } },
     },
   });
 
@@ -48,15 +65,30 @@ export async function getClients(search?: string, statusFilter?: ClientStatus) {
   });
 }
 
-export async function getClientCounts() {
-  const [total, inBearbeitung, verkauft, nichtVerkauft] = await Promise.all([
-    db.client.count(),
-    db.client.count({ where: { status: "IN_BEARBEITUNG" } }),
-    db.client.count({ where: { status: "VERKAUFT" } }),
-    db.client.count({ where: { status: "NICHT_VERKAUFT" } }),
+export async function getClientCounts(assignedToFilter?: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Nicht authentifiziert");
+
+  let baseWhere: Record<string, unknown> = {};
+  if (session.user.role !== "ADMIN") {
+    baseWhere = { assignedToId: session.user.id };
+  } else if (assignedToFilter && assignedToFilter !== "ALL") {
+    if (assignedToFilter === "UNASSIGNED") {
+      baseWhere = { assignedToId: null };
+    } else {
+      baseWhere = { assignedToId: assignedToFilter };
+    }
+  }
+
+  const [total, neu, inBearbeitung, verkauft, nichtVerkauft] = await Promise.all([
+    db.client.count({ where: baseWhere }),
+    db.client.count({ where: { ...baseWhere, status: "NEU" } }),
+    db.client.count({ where: { ...baseWhere, status: "IN_BEARBEITUNG" } }),
+    db.client.count({ where: { ...baseWhere, status: "VERKAUFT" } }),
+    db.client.count({ where: { ...baseWhere, status: "NICHT_VERKAUFT" } }),
   ]);
 
-  return { total, inBearbeitung, verkauft, nichtVerkauft };
+  return { total, neu, inBearbeitung, verkauft, nichtVerkauft };
 }
 
 const clientDetailInclude = {
@@ -72,15 +104,33 @@ const clientDetailInclude = {
     take: 20,
     include: { sentBy: { select: { name: true } } },
   },
+  clientNotes: {
+    orderBy: { createdAt: "desc" as const },
+    take: 50,
+    include: { author: { select: { name: true } } },
+  },
+  assignedTo: { select: { id: true, name: true } },
 } satisfies Prisma.ClientInclude;
 
 export type ClientDetail = Prisma.ClientGetPayload<{ include: typeof clientDetailInclude }>;
 
 export async function getClient(id: string): Promise<ClientDetail | null> {
-  return db.client.findUnique({
+  const session = await auth();
+  if (!session?.user) throw new Error("Nicht authentifiziert");
+
+  const client = await db.client.findUnique({
     where: { id },
     include: clientDetailInclude,
   });
+
+  if (!client) return null;
+
+  // Non-admin can only see their own assigned clients
+  if (session.user.role !== "ADMIN" && client.assignedToId !== session.user.id) {
+    return null;
+  }
+
+  return client;
 }
 
 export async function createClient(data: ClientFormData) {
@@ -160,4 +210,44 @@ export async function toggleUnsubscribe(id: string, unsubscribed: boolean) {
 
   revalidatePath("/clients");
   revalidatePath(`/clients/${id}`);
+}
+
+export async function assignClient(clientId: string, userId: string | null) {
+  await requireAdmin();
+
+  await db.client.update({
+    where: { id: clientId },
+    data: { assignedToId: userId },
+  });
+
+  revalidatePath("/clients");
+  revalidatePath(`/clients/${clientId}`);
+}
+
+export async function bulkAssignClients(clientIds: string[], userId: string | null) {
+  await requireAdmin();
+
+  await db.client.updateMany({
+    where: { id: { in: clientIds } },
+    data: { assignedToId: userId },
+  });
+
+  revalidatePath("/clients");
+}
+
+export async function createClientNote(clientId: string, content: string) {
+  const session = await requireAuth();
+
+  if (!content.trim()) throw new Error("Notiz darf nicht leer sein");
+
+  const note = await db.clientNote.create({
+    data: {
+      content: content.trim(),
+      clientId,
+      authorId: session.user.id,
+    },
+  });
+
+  revalidatePath(`/clients/${clientId}`);
+  return note;
 }

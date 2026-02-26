@@ -105,6 +105,7 @@ export function CampaignCreateForm({ templates }: Props) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Alle Kunden</SelectItem>
+                <SelectItem value="NEU">Neu</SelectItem>
                 <SelectItem value="IN_BEARBEITUNG">In Bearbeitung</SelectItem>
                 <SelectItem value="VERKAUFT">Verkauft</SelectItem>
                 <SelectItem value="NICHT_VERKAUFT">Nicht Verkauft</SelectItem>

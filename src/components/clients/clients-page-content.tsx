@@ -18,29 +18,36 @@ interface ClientsPageContentProps {
   initialClients: ClientWithRelations[];
   initialCounts: {
     total: number;
+    neu: number;
     inBearbeitung: number;
     verkauft: number;
     nichtVerkauft: number;
   };
+  users?: { id: string; name: string; role?: string }[];
+  isAdmin?: boolean;
 }
 
 export function ClientsPageContent({
   initialClients,
   initialCounts,
+  users,
+  isAdmin,
 }: ClientsPageContentProps) {
   const [clients, setClients] = useState(initialClients);
   const [counts, setCounts] = useState(initialCounts);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("ALL");
+  const [assignedFilter, setAssignedFilter] = useState("ALL");
   const [isPending, startTransition] = useTransition();
 
   const fetchClients = useCallback(
-    (searchVal: string, status: string) => {
+    (searchVal: string, status: string, assigned: string) => {
       startTransition(async () => {
         const statusFilter = status === "ALL" ? undefined : (status as ClientStatus);
+        const assignedParam = assigned === "ALL" ? undefined : assigned;
         const [newClients, newCounts] = await Promise.all([
-          getClients(searchVal || undefined, statusFilter),
-          getClientCounts(),
+          getClients(searchVal || undefined, statusFilter, assignedParam),
+          getClientCounts(assignedParam),
         ]);
         setClients(newClients);
         setCounts(newCounts);
@@ -52,13 +59,14 @@ export function ClientsPageContent({
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchClients(search, activeTab);
+      fetchClients(search, activeTab, assignedFilter);
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, activeTab, fetchClients]);
+  }, [search, activeTab, assignedFilter, fetchClients]);
 
   const tabItems = [
     { value: "ALL", label: "Alle", count: counts.total },
+    { value: "NEU", label: "Neu", count: counts.neu },
     { value: "IN_BEARBEITUNG", label: "In Bearbeitung", count: counts.inBearbeitung },
     { value: "VERKAUFT", label: "Verkauft", count: counts.verkauft },
     { value: "NICHT_VERKAUFT", label: "Nicht verkauft", count: counts.nichtVerkauft },
@@ -95,6 +103,29 @@ export function ClientsPageContent({
           />
         </div>
       </div>
+
+      {/* User filter chips (admin only) */}
+      {isAdmin && users && users.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {[
+            { value: "ALL", label: "Alle" },
+            { value: "UNASSIGNED", label: "Nicht zugewiesen" },
+            ...users.map((u) => ({ value: u.id, label: u.name })),
+          ].map((chip) => (
+            <button
+              key={chip.value}
+              onClick={() => setAssignedFilter(chip.value)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                assignedFilter === chip.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>

@@ -25,9 +25,11 @@ interface ClientFormProps {
   onSubmit: (data: ClientFormData) => Promise<void>;
   submitLabel: string;
   loadingLabel: string;
+  users?: { id: string; name: string }[];
+  isAdmin?: boolean;
 }
 
-export function ClientForm({ defaultValues, onSubmit, submitLabel, loadingLabel }: ClientFormProps) {
+export function ClientForm({ defaultValues, onSubmit, submitLabel, loadingLabel, users, isAdmin }: ClientFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -41,7 +43,7 @@ export function ClientForm({ defaultValues, onSubmit, submitLabel, loadingLabel 
     resolver: zodResolver(clientSchema),
     defaultValues: {
       customerNumber: "",
-      status: "IN_BEARBEITUNG",
+      status: "NEU",
       ...defaultValues,
     },
   });
@@ -158,7 +160,7 @@ export function ClientForm({ defaultValues, onSubmit, submitLabel, loadingLabel 
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
-                defaultValue={defaultValues?.status || "IN_BEARBEITUNG"}
+                defaultValue={defaultValues?.status || "NEU"}
                 onValueChange={(v) => {
                   setValue("status", v as ClientFormData["status"]);
                   if (v !== "IN_BEARBEITUNG") {
@@ -171,6 +173,7 @@ export function ClientForm({ defaultValues, onSubmit, submitLabel, loadingLabel 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="NEU">Neu</SelectItem>
                   <SelectItem value="IN_BEARBEITUNG">In Bearbeitung</SelectItem>
                   <SelectItem value="VERKAUFT">Verkauft</SelectItem>
                   <SelectItem value="NICHT_VERKAUFT">Nicht verkauft</SelectItem>
@@ -227,6 +230,27 @@ export function ClientForm({ defaultValues, onSubmit, submitLabel, loadingLabel 
                   </Label>
                 </div>
               </RadioGroup>
+            </div>
+          )}
+          {isAdmin && users && users.length > 0 && (
+            <div className="space-y-2">
+              <Label>Zugewiesen an</Label>
+              <Select
+                defaultValue={defaultValues?.assignedToId || "none"}
+                onValueChange={(v) => setValue("assignedToId", v === "none" ? null : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Nicht zugewiesen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nicht zugewiesen</SelectItem>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
         </CardContent>

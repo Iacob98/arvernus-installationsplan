@@ -25,16 +25,19 @@ interface ClientCardProps {
     unsubscribed: boolean;
     _count: { projects: number };
     reminders: { id: string; date: Date; completed: boolean }[];
+    assignedTo?: { name: string } | null;
   };
 }
 
 const STATUS_COLORS: Record<ClientStatus, string> = {
+  NEU: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
   IN_BEARBEITUNG: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   VERKAUFT: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   NICHT_VERKAUFT: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
 };
 
 const STATUS_LABELS: Record<ClientStatus, string> = {
+  NEU: "Neu",
   IN_BEARBEITUNG: "In Bearbeitung",
   VERKAUFT: "Verkauft",
   NICHT_VERKAUFT: "Nicht verkauft",
@@ -97,6 +100,11 @@ export function ClientCard({ client }: ClientCardProps) {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            {client.assignedTo && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                {client.assignedTo.name}
+              </Badge>
+            )}
             {client.dealProbability && (
               <span
                 className={`h-2 w-2 rounded-full ${PROBABILITY_DOTS[client.dealProbability]}`}

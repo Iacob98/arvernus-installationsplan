@@ -73,7 +73,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Passwort</Label>
+              <Label htmlFor="password">PIN</Label>
               <Input
                 id="password"
                 name="password"

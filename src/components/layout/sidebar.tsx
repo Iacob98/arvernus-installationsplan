@@ -3,15 +3,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import logoImg from "@/../public/logo.png";
 import { cn } from "@/lib/utils";
 import {
   FolderOpen,
   Users,
+  UserCog,
   Megaphone,
   Settings,
   Menu,
-  X,
 } from "lucide-react";
 import {
   Sheet,
@@ -22,15 +23,28 @@ import {
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
-const navItems = [
-  { href: "/projects", label: "Projekte", icon: FolderOpen },
-  { href: "/clients", label: "Kunden", icon: Users },
-  { href: "/campaigns", label: "Kampagnen", icon: Megaphone },
-  { href: "/settings", label: "Einstellungen", icon: Settings },
-];
+type NavItem = { href: string; label: string; icon: typeof FolderOpen };
+
+function getNavItems(role?: string): NavItem[] {
+  if (role !== "ADMIN") {
+    return [
+      { href: "/clients", label: "Kunden", icon: Users },
+    ];
+  }
+
+  return [
+    { href: "/projects", label: "Projekte", icon: FolderOpen },
+    { href: "/clients", label: "Kunden", icon: Users },
+    { href: "/users", label: "Benutzer", icon: UserCog },
+    { href: "/campaigns", label: "Kampagnen", icon: Megaphone },
+    { href: "/settings", label: "Einstellungen", icon: Settings },
+  ];
+}
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const navItems = getNavItems(session?.user?.role);
 
   return (
     <nav className="flex-1 p-4 space-y-1">

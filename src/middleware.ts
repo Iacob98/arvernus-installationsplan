@@ -14,7 +14,15 @@ export default auth((req) => {
   }
 
   if (isLoggedIn && isLoginPage) {
-    return NextResponse.redirect(new URL("/projects", req.url));
+    const home = req.auth?.user?.role === "ADMIN" ? "/projects" : "/clients";
+    return NextResponse.redirect(new URL(home, req.url));
+  }
+
+  // Admin-only routes
+  const adminOnlyPaths = ["/users", "/campaigns", "/settings", "/projects"];
+  const isAdminRoute = adminOnlyPaths.some((p) => req.nextUrl.pathname.startsWith(p));
+  if (isLoggedIn && isAdminRoute && req.auth?.user?.role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/clients", req.url));
   }
 
   return NextResponse.next();

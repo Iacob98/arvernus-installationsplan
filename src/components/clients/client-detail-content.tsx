@@ -15,20 +15,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Mail, Phone, MapPin, Trash2, MailX, MailCheck } from "lucide-react";
-import { updateClientStatus, deleteClient, toggleUnsubscribe, type ClientDetail } from "@/lib/actions/clients";
+import { updateClientStatus, deleteClient, toggleUnsubscribe, assignClient, type ClientDetail } from "@/lib/actions/clients";
 import { ClientStatusSelect } from "./client-status-select";
 import { DealProbabilitySelect } from "./deal-probability-select";
 import { ReminderSection } from "./reminder-section";
+import { ClientNotesSection } from "./client-notes-section";
 import { EmailComposeDialog } from "./email-compose-dialog";
 import { EmailLogSection } from "./email-log-section";
 import { toast } from "sonner";
 
 interface ClientDetailContentProps {
   client: ClientDetail;
+  users?: { id: string; name: string }[];
+  isAdmin?: boolean;
 }
 
-export function ClientDetailContent({ client }: ClientDetailContentProps) {
+export function ClientDetailContent({ client, users, isAdmin }: ClientDetailContentProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -59,6 +70,17 @@ export function ClientDetailContent({ client }: ClientDetailContentProps) {
         await updateClientStatus(client.id, client.status, undefined, probability);
       } catch {
         toast.error("Fehler beim Aktualisieren");
+      }
+    });
+  }
+
+  function handleAssignChange(userId: string) {
+    startTransition(async () => {
+      try {
+        await assignClient(client.id, userId === "none" ? null : userId);
+        toast.success("Zuweisung aktualisiert");
+      } catch {
+        toast.error("Fehler beim Zuweisen");
       }
     });
   }
@@ -145,7 +167,7 @@ export function ClientDetailContent({ client }: ClientDetailContentProps) {
           </CardContent>
         </Card>
 
-        {/* Status & Probability */}
+        {/* Status & Pipeline */}
         <Card>
           <CardHeader>
             <CardTitle>Status & Pipeline</CardTitle>
@@ -163,12 +185,42 @@ export function ClientDetailContent({ client }: ClientDetailContentProps) {
                 onChange={handleProbabilityChange}
               />
             )}
+            {isAdmin && users && users.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Zugewiesen an</Label>
+                <Select
+                  value={client.assignedToId || "none"}
+                  onValueChange={handleAssignChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nicht zugewiesen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nicht zugewiesen</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {!isAdmin && client.assignedTo && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Zugewiesen an</Label>
+                <p className="text-sm">{client.assignedTo.name}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Reminders */}
       <ReminderSection clientId={client.id} reminders={client.reminders} />
+
+      {/* Notes / Verlauf */}
+      <ClientNotesSection clientId={client.id} notes={client.clientNotes} />
 
       {/* Projects */}
       <Card>

@@ -3,6 +3,9 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClient } from "@/lib/actions/clients";
+import { getActiveUsers } from "@/lib/actions/users";
+import { auth } from "@/lib/auth";
+import { isAdmin } from "@/lib/auth-utils";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { ClientDetailContent } from "@/components/clients/client-detail-content";
@@ -15,6 +18,10 @@ export default async function ClientDetailPage({
   const { clientId } = await params;
   const client = await getClient(clientId);
   if (!client) notFound();
+
+  const session = await auth();
+  const admin = session ? isAdmin(session) : false;
+  const users = admin ? await getActiveUsers() : [];
 
   return (
     <div className="space-y-6">
@@ -39,7 +46,7 @@ export default async function ClientDetailPage({
         </Link>
       </div>
 
-      <ClientDetailContent client={client} />
+      <ClientDetailContent client={client} users={users} isAdmin={admin} />
     </div>
   );
 }

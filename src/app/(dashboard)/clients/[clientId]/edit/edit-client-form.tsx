@@ -8,9 +8,11 @@ import { toast } from "sonner";
 
 interface EditClientFormProps {
   client: ClientDetail;
+  users?: { id: string; name: string }[];
+  isAdmin?: boolean;
 }
 
-export function EditClientForm({ client }: EditClientFormProps) {
+export function EditClientForm({ client, users, isAdmin }: EditClientFormProps) {
   const router = useRouter();
 
   async function onSubmit(data: ClientFormData) {
@@ -37,10 +39,13 @@ export function EditClientForm({ client }: EditClientFormProps) {
         substatus: client.substatus,
         dealProbability: client.dealProbability,
         source: client.source,
+        assignedToId: client.assignedToId,
       }}
       onSubmit={onSubmit}
       submitLabel="Speichern"
       loadingLabel="Speichern..."
+      users={users}
+      isAdmin={isAdmin}
     />
   );
 }

@@ -286,7 +286,7 @@ async function processImapJob(job: Job<ImapJobData>) {
               postalCode: contact.postalCode || "00000",
               city: contact.city || "-",
               notes: contact.message || "",
-              status: "IN_BEARBEITUNG",
+              status: "NEU",
               substatus: "IN_KONTAKT",
               source: "website",
             },
