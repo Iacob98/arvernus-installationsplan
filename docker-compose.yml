@@ -3,11 +3,11 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "3100:3100"
+      - "${APP_PORT:-5000}:3100"
     environment:
       - DATABASE_URL=postgresql://installplan:installplan_secret@postgres:5432/installationsplan?schema=public
       - AUTH_SECRET=${AUTH_SECRET}
-      - AUTH_URL=http://localhost:3100
+      - AUTH_URL=${AUTH_URL:-http://localhost:5000}
       - REDIS_URL=redis://redis:6379
       - MINIO_ENDPOINT=minio
       - MINIO_PORT=9000
@@ -15,7 +15,7 @@ services:
       - MINIO_SECRET_KEY=minioadmin_secret
       - MINIO_BUCKET=installationsplan
       - MINIO_USE_SSL=false
-      - NEXT_PUBLIC_APP_URL=http://localhost:3100
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:5000}
     depends_on:
       postgres:
         condition: service_healthy
