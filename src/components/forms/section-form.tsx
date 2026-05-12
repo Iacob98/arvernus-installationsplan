@@ -1,6 +1,7 @@
 "use client";
 
 import { TitlePageForm } from "./sections/title-page";
+import { DeliveryNoteForm } from "./sections/delivery-note";
 import { InstallationProcessForm } from "./sections/installation-process";
 import { ClientPreparationForm } from "./sections/client-preparation";
 import { TechnicalPlanningForm } from "./sections/technical-planning";
@@ -19,20 +20,22 @@ import { ConsentForm } from "./sections/consent";
 
 type SectionFormProps = {
   sectionType: string;
+  sectionId: string;
   data: Record<string, unknown>;
   onChange: (data: Record<string, unknown>) => void;
   projectId: string;
 };
 
-const formComponents: Record<
-  string,
-  React.ComponentType<{
-    data: Record<string, unknown>;
-    onChange: (data: Record<string, unknown>) => void;
-    projectId: string;
-  }>
-> = {
+type FormComponentProps = {
+  data: Record<string, unknown>;
+  onChange: (data: Record<string, unknown>) => void;
+  projectId: string;
+  sectionId: string;
+};
+
+const formComponents: Record<string, React.ComponentType<FormComponentProps>> = {
   TITLE_PAGE: TitlePageForm,
+  DELIVERY_NOTE: DeliveryNoteForm,
   INSTALLATION_PROCESS: InstallationProcessForm,
   CLIENT_PREPARATION: ClientPreparationForm,
   TECHNICAL_PLANNING: TechnicalPlanningForm,
@@ -52,6 +55,7 @@ const formComponents: Record<
 
 export function SectionForm({
   sectionType,
+  sectionId,
   data,
   onChange,
   projectId,
@@ -62,5 +66,12 @@ export function SectionForm({
     return <p className="text-muted-foreground">Unbekannter Abschnittstyp: {sectionType}</p>;
   }
 
-  return <FormComponent data={data} onChange={onChange} projectId={projectId} />;
+  return (
+    <FormComponent
+      data={data}
+      onChange={onChange}
+      projectId={projectId}
+      sectionId={sectionId}
+    />
+  );
 }

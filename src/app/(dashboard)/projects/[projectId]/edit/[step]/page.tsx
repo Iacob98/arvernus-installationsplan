@@ -184,13 +184,14 @@ export default function WizardStepPage() {
         <CardContent className="space-y-6 px-4 sm:px-6">
           <SectionForm
             sectionType={sectionType}
+            sectionId={sectionId ?? ""}
             data={sectionData}
             onChange={onDataChange}
             projectId={projectId}
           />
 
-          {/* Photo upload for every section */}
-          {sectionId && (
+          {/* Photo upload for every section except DELIVERY_NOTE (PDFs only there) */}
+          {sectionId && sectionType !== "DELIVERY_NOTE" && (
             <div className="border-t pt-4">
               <PhotoUpload
                 sectionId={sectionId}

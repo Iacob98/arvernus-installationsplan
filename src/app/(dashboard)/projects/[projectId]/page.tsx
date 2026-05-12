@@ -45,7 +45,8 @@ export default async function ProjectDetailPage({
   if (!project) notFound();
 
   const completedSections = project.sections.filter((s) => s.completed).length;
-  const progress = (completedSections / 16) * 100;
+  const totalSections = project.sections.length;
+  const progress = totalSections > 0 ? (completedSections / totalSections) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -82,7 +83,7 @@ export default async function ProjectDetailPage({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {completedSections}/16
+              {completedSections}/{totalSections}
             </div>
             <Progress value={progress} className="mt-2" />
           </CardContent>

@@ -6,6 +6,22 @@ export const titlePageSchema = z.object({
   additionalInfo: z.string().optional(),
 });
 
+export const deliveryNoteFileSchema = z.object({
+  id: z.string(),
+  fileName: z.string(),
+  storagePath: z.string(),
+  size: z.number(),
+  mimeType: z.string(),
+  uploadedAt: z.string(),
+});
+
+export const deliveryNoteSchema = z.object({
+  files: z.array(deliveryNoteFileSchema).default([]),
+  notes: z.string().optional(),
+});
+
+export type DeliveryNoteFile = z.infer<typeof deliveryNoteFileSchema>;
+
 export const installationProcessSchema = z.object({
   phase1Title: z.string().default("Fundamentarbeiten"),
   phase1Description: z.string().optional(),
@@ -129,6 +145,7 @@ export const consentSchema = z.object({
 
 export const sectionSchemas = {
   TITLE_PAGE: titlePageSchema,
+  DELIVERY_NOTE: deliveryNoteSchema,
   INSTALLATION_PROCESS: installationProcessSchema,
   CLIENT_PREPARATION: clientPreparationSchema,
   TECHNICAL_PLANNING: technicalPlanningSchema,
@@ -148,6 +165,7 @@ export const sectionSchemas = {
 
 export const SECTION_LABELS: Record<string, string> = {
   TITLE_PAGE: "Titelseite",
+  DELIVERY_NOTE: "Lieferschein",
   INSTALLATION_PROCESS: "Installationsprozess",
   CLIENT_PREPARATION: "Kundenvorbereitung",
   TECHNICAL_PLANNING: "Technische Planung",
@@ -167,6 +185,7 @@ export const SECTION_LABELS: Record<string, string> = {
 
 export const SECTION_ORDER = [
   "TITLE_PAGE",
+  "DELIVERY_NOTE",
   "INSTALLATION_PROCESS",
   "CLIENT_PREPARATION",
   "TECHNICAL_PLANNING",

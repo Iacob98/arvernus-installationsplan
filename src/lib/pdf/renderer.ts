@@ -152,6 +152,8 @@ export async function renderPdfHtml(projectId: string): Promise<string> {
   const sectionHtmls: string[] = [];
 
   for (const section of project.sections) {
+    // DELIVERY_NOTE is an internal attachment (Lieferschein) — never include in the final PDF
+    if (section.type === "DELIVERY_NOTE") continue;
     const html = renderSection(section, project, company, photoUrls);
     sectionHtmls.push(html);
   }
