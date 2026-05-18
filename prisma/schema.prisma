@@ -90,13 +90,14 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  projects        Project[]
-  documents       Document[]
-  auditLogs       AuditLog[]
-  emailLogs       EmailLog[]
-  campaigns       Campaign[]
-  assignedClients Client[]         @relation("AssignedClients")
-  clientNotes     ClientNote[]     @relation("ClientNotes")
+  projects           Project[]
+  documents          Document[]
+  auditLogs          AuditLog[]
+  emailLogs          EmailLog[]
+  campaigns          Campaign[]
+  assignedClients    Client[]            @relation("AssignedClients")
+  clientNotes        ClientNote[]        @relation("ClientNotes")
+  clientAttachments  ClientAttachment[]  @relation("UploadedClientAttachments")
 
   @@map("users")
 }
@@ -129,6 +130,7 @@ model Client {
   reminders       Reminder[]
   emailLogs       EmailLog[]
   clientNotes     ClientNote[]
+  attachments     ClientAttachment[]
 
   @@map("clients")
 }
@@ -417,4 +419,23 @@ model ClientNote {
 
   @@index([clientId])
   @@map("client_notes")
+}
+
+model ClientAttachment {
+  id           String   @id @default(cuid())
+  fileName     String
+  storagePath  String
+  mimeType     String
+  size         Int
+
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  uploadedById String
+  uploadedBy   User     @relation("UploadedClientAttachments", fields: [uploadedById], references: [id])
+
+  createdAt    DateTime @default(now())
+
+  @@index([clientId])
+  @@map("client_attachments")
 }

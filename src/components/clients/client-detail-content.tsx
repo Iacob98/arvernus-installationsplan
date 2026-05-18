@@ -29,6 +29,7 @@ import { ClientStatusSelect } from "./client-status-select";
 import { DealProbabilitySelect } from "./deal-probability-select";
 import { ReminderSection } from "./reminder-section";
 import { ClientNotesSection } from "./client-notes-section";
+import { ClientAttachmentsSection } from "./client-attachments-section";
 import { EmailComposeDialog } from "./email-compose-dialog";
 import { EmailLogSection } from "./email-log-section";
 import { toast } from "sonner";
@@ -221,6 +222,12 @@ export function ClientDetailContent({ client, users, isAdmin }: ClientDetailCont
 
       {/* Notes / Verlauf */}
       <ClientNotesSection clientId={client.id} notes={client.clientNotes} />
+
+      {/* Attachments */}
+      <ClientAttachmentsSection
+        clientId={client.id}
+        attachments={client.attachments}
+      />
 
       {/* Projects */}
       <Card>

@@ -109,6 +109,10 @@ const clientDetailInclude = {
     take: 50,
     include: { author: { select: { name: true } } },
   },
+  attachments: {
+    orderBy: { createdAt: "desc" as const },
+    include: { uploadedBy: { select: { name: true } } },
+  },
   assignedTo: { select: { id: true, name: true } },
 } satisfies Prisma.ClientInclude;
 
