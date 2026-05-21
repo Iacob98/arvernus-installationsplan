@@ -40,6 +40,52 @@ interface ClientDetailContentProps {
   isAdmin?: boolean;
 }
 
+const INQUIRY_FIELDS: { key: keyof ClientDetail; label: string }[] = [
+  { key: "ownership", label: "Eigentumsverhältnis" },
+  { key: "buildingType", label: "Gebäudetyp" },
+  { key: "constructionYear", label: "Baujahr" },
+  { key: "householdSize", label: "Personenanzahl im Haushalt" },
+  { key: "currentHeating", label: "Aktuelle Heizung" },
+  { key: "currentFuel", label: "Genutzter Brennstoff" },
+  { key: "heatingAge", label: "Alter der Heizung" },
+  { key: "hotWaterIncluded", label: "Wärmepumpe mit Wassererwärmung" },
+  { key: "timeframe", label: "Zeitrahmen" },
+  { key: "availability", label: "Erreichbarkeit" },
+  { key: "annualKwhGas", label: "Jahresverbrauch in kWh (Gas)" },
+  { key: "annualLitersOil", label: "Jahresverbrauch in Liter (Heizöl)" },
+];
+
+function InquiryDetailsCard({ client }: { client: ClientDetail }) {
+  const filled = INQUIRY_FIELDS.filter((f) => client[f.key]);
+  if (filled.length === 0 && !client.additionalInfo) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Anfragedetails</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {filled.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {filled.map((f) => (
+              <div key={f.key} className="space-y-1">
+                <p className="text-xs text-muted-foreground">{f.label}</p>
+                <p className="text-sm">{String(client[f.key])}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {client.additionalInfo && (
+          <div className="space-y-1 pt-2 border-t">
+            <p className="text-xs text-muted-foreground">Zusätzliche Projektinformationen</p>
+            <p className="text-sm whitespace-pre-wrap">{client.additionalInfo}</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ClientDetailContent({ client, users, isAdmin }: ClientDetailContentProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -216,6 +262,9 @@ export function ClientDetailContent({ client, users, isAdmin }: ClientDetailCont
           </CardContent>
         </Card>
       </div>
+
+      {/* Anfragedetails */}
+      <InquiryDetailsCard client={client} />
 
       {/* Reminders */}
       <ReminderSection clientId={client.id} reminders={client.reminders} />

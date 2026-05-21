@@ -17,6 +17,19 @@ export const clientSchema = z.object({
   dealProbability: z.enum(["NIEDRIG", "MITTEL", "HOCH"]).nullable().optional(),
   source: z.string().nullable().optional(),
   assignedToId: z.string().nullable().optional(),
+  ownership: z.string().nullable().optional(),
+  buildingType: z.string().nullable().optional(),
+  constructionYear: z.string().nullable().optional(),
+  householdSize: z.string().nullable().optional(),
+  currentHeating: z.string().nullable().optional(),
+  currentFuel: z.string().nullable().optional(),
+  heatingAge: z.string().nullable().optional(),
+  hotWaterIncluded: z.string().nullable().optional(),
+  timeframe: z.string().nullable().optional(),
+  availability: z.string().nullable().optional(),
+  annualKwhGas: z.string().nullable().optional(),
+  annualLitersOil: z.string().nullable().optional(),
+  additionalInfo: z.string().nullable().optional(),
 });
 
 export type ClientFormData = z.infer<typeof clientSchema>;

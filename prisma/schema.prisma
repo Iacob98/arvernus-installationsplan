@@ -120,6 +120,21 @@ model Client {
   dealProbability DealProbability?
   source          String?
   unsubscribed    Boolean           @default(false)
+
+  ownership          String?
+  buildingType       String?
+  constructionYear   String?
+  householdSize      String?
+  currentHeating     String?
+  currentFuel        String?
+  heatingAge         String?
+  hotWaterIncluded   String?
+  timeframe          String?
+  availability       String?
+  annualKwhGas       String?
+  annualLitersOil    String?
+  additionalInfo     String?
+
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 

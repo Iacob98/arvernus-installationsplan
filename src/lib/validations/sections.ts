@@ -50,6 +50,11 @@ export const technicalPlanningSchema = z.object({
   refrigerant: z.string().optional(),
   soundPowerLevel: z.string().optional(),
   cop: z.string().optional(),
+  // Auslegung (Thermondo)
+  normHeatLoad: z.number().optional(),
+  normOutdoorTemp: z.number().optional(),
+  bivalencePoint: z.number().optional(),
+  kwClass: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -60,6 +65,22 @@ export const installationSiteSchema = z.object({
   distanceToNeighbor: z.string().optional(),
   clearanceHeight: z.string().optional(),
   requirements: z.string().optional(),
+  // Aufstellort WP
+  aushubrestEntsorgung: z.string().optional(),
+  schutzbereichPropan: z.string().optional(),
+  anfahrschutz: z.string().optional(),
+  abdeckhaubeBuderus: z.string().optional(),
+  // Hauseinführung
+  hauseinfuehrungArt: z.string().optional(),
+  hauseinfuehrungEntfernung: z.number().optional(),
+  hauseinfuehrungLeitungsfuehrung: z.string().optional(),
+  hauseinfuehrungOberflaeche: z.string().optional(),
+  wellrohrLaenge: z.number().optional(),
+  // Vorschriften & Logistik
+  taLaermEingehalten: z.string().optional(),
+  baurechtEingehalten: z.string().optional(),
+  tragehilfeBenoetigt: z.string().optional(),
+  geruestHebebuehne: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -70,11 +91,29 @@ export const existingSystemSchema = z.object({
   hasSolarPanels: z.boolean().default(false),
   solarPanelDetails: z.string().optional(),
   hotWaterSystem: z.string().optional(),
+  // Bestandsanlage (Thermondo)
+  typenbezeichnungBestand: z.string().optional(),
+  inbetriebnahmeJahr: z.number().optional(),
+  // Gas-Daten
+  ruckbauGasleitung: z.string().optional(),
+  gaszaehlerNummer: z.string().optional(),
+  gaszaehlerStandM3: z.number().optional(),
+  // WW & Hydraulik-Bestand
+  warmwasserUeberHeizung: z.string().optional(),
+  zirkulationsleitung: z.string().optional(),
+  druckminderer: z.string().optional(),
+  kondensatpumpe: z.string().optional(),
   notes: z.string().optional(),
 });
 
 export const heatingCircuitsSchema = z.object({
   totalCircuits: z.number().optional(),
+  circuitsHeizkoerper: z.number().optional(),
+  circuitsFussboden: z.number().optional(),
+  rohrsystem: z.string().optional(),
+  anzahlHeizkoerper: z.number().optional(),
+  anzahlHeizschlaufen: z.number().optional(),
+  anzahlZuTauschen: z.number().optional(),
   notes: z.string().optional(),
 });
 
@@ -82,6 +121,18 @@ export const hydraulicsSchema = z.object({
   indoorUnitType: z.string().optional(),
   bufferTankVolume: z.string().optional(),
   hotWaterTankVolume: z.string().optional(),
+  // Hydraulik (Thermondo)
+  systemtrennung: z.string().optional(),
+  zuwegungAusreichend: z.string().optional(),
+  platzHydraulik: z.string().optional(),
+  hydraulikSchema: z.string().optional(),
+  etage: z.string().optional(),
+  // Wassermessung
+  anzahlWMZ: z.number().optional(),
+  trinkwasserEnthaertung: z.string().optional(),
+  entsalzungspatrone: z.string().optional(),
+  wzWarm: z.number().optional(),
+  wzKalt: z.number().optional(),
   notes: z.string().optional(),
 });
 
@@ -90,6 +141,8 @@ export const pipingSchema = z.object({
   floorPenetrations: z.number().default(0),
   pipeLength: z.string().optional(),
   insulationType: z.string().optional(),
+  rohrlaengeHEzuInnen: z.number().optional(),
+  zusaetzlicheVerrohrung: z.number().optional(),
   notes: z.string().optional(),
 });
 
@@ -100,6 +153,23 @@ export const electricalPlanningSchema = z.object({
   inverterType: z.string().optional(),
   batteryStorage: z.boolean().default(false),
   batteryCapacity: z.string().optional(),
+  // HAK
+  hakAusreichend: z.string().optional(),
+  hakAufstellort: z.string().optional(),
+  hakPotentialausgleich: z.string().optional(),
+  // Potentialausgleich
+  potentialausgleichAusreichend: z.string().optional(),
+  potentialausgleichAusfuehrung: z.string().optional(),
+  tiefenerderErforderlich: z.string().optional(),
+  // HEMS
+  hemsInternetVerbindung: z.string().optional(),
+  hemsLanBuchseFrei: z.string().optional(),
+  hemsSteckdoseRouter: z.string().optional(),
+  // Zusatzgeräte
+  wallbox: z.string().optional(),
+  elektrospeicher: z.string().optional(),
+  durchlauferhitzer: z.string().optional(),
+  klimageraete: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -107,6 +177,9 @@ export const tariffMeterSchema = z.object({
   tariffType: z.string().optional(),
   meterNumber: z.string().optional(),
   meterLocation: z.string().optional(),
+  netzbetreiber: z.string().optional(),
+  netzbetreiberBemerkung: z.string().optional(),
+  tsgAusfuehrung: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -114,6 +187,18 @@ export const panelReplacementSchema = z.object({
   replacementRequired: z.boolean().default(false),
   newPanelLocation: z.string().optional(),
   instructions: z.string().optional(),
+  // Allgemein
+  zaehlerschrankAusreichend: z.string().optional(),
+  bestandshauptzaehlerAusreichend: z.string().optional(),
+  anzahlZaehler: z.number().optional(),
+  zaehlernummerHaupt: z.string().optional(),
+  zaehlernummer2: z.string().optional(),
+  zaehlerzusammenlegung: z.string().optional(),
+  wpAnschluss: z.string().optional(),
+  // Ertüchtigung
+  vorsicherungAusreichend: z.string().optional(),
+  bemessungsstromVorsicherung: z.number().optional(),
+  ueberspannungsschutz: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -121,6 +206,18 @@ export const cableRoutesSchema = z.object({
   cableLength: z.string().optional(),
   routeDescription: z.string().optional(),
   floorPlan: z.string().optional(),
+  // Strecke A: HAK ↔ ZS
+  hakZsErneuerung: z.string().optional(),
+  hakZsBemerkung: z.string().optional(),
+  // Strecke B: ZS ↔ Steuerschrank
+  zsScLaenge: z.number().optional(),
+  zsScWanddurchbrueche: z.number().optional(),
+  zsScDeckendurchbrueche: z.number().optional(),
+  // Strecke C: Steuerschrank ↔ WP
+  scWpLaenge: z.number().optional(),
+  scBackupHeaterLaenge: z.number().optional(),
+  verlegungBadezimmer: z.string().optional(),
+  heizungsdemontageElektro: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -128,12 +225,21 @@ export const controlCabinetSchema = z.object({
   cabinetType: z.string().optional(),
   dimensions: z.string().optional(),
   location: z.string().optional(),
+  // Steuerschrank-Paket
+  paketVorhanden: z.string().optional(),
+  paketBemerkung: z.string().optional(),
+  montagestelleFestgelegt: z.string().optional(),
+  potentialausgleichschiene: z.string().optional(),
   notes: z.string().optional(),
 });
 
 export const additionalEquipmentSchema = z.object({
   storageLocation: z.string().optional(),
   equipmentList: z.string().optional(),
+  oeltankentsorgungElektro: z.string().optional(),
+  geruestNotwendigElektro: z.string().optional(),
+  sondermaterialElektroVorhanden: z.string().optional(),
+  sondermaterialElektroDetails: z.string().optional(),
   notes: z.string().optional(),
 });
 

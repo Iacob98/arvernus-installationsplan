@@ -258,6 +258,68 @@ export function ClientForm({ defaultValues, onSubmit, submitLabel, loadingLabel,
 
       <Card>
         <CardHeader>
+          <CardTitle>Anfragedetails</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Eigentumsverhältnis</Label>
+              <Input {...register("ownership")} placeholder="z. B. Eigentümer" />
+            </div>
+            <div className="space-y-2">
+              <Label>Gebäudetyp</Label>
+              <Input {...register("buildingType")} placeholder="z. B. Ein- oder Zweifamilienhaus" />
+            </div>
+            <div className="space-y-2">
+              <Label>Baujahr</Label>
+              <Input {...register("constructionYear")} placeholder="z. B. Vor 1960" />
+            </div>
+            <div className="space-y-2">
+              <Label>Personenanzahl im Haushalt</Label>
+              <Input {...register("householdSize")} placeholder="z. B. 1-2" />
+            </div>
+            <div className="space-y-2">
+              <Label>Aktuelle Heizung</Label>
+              <Input {...register("currentHeating")} />
+            </div>
+            <div className="space-y-2">
+              <Label>Genutzter Brennstoff</Label>
+              <Input {...register("currentFuel")} />
+            </div>
+            <div className="space-y-2">
+              <Label>Alter der Heizung</Label>
+              <Input {...register("heatingAge")} placeholder="z. B. 30 Jahre & mehr" />
+            </div>
+            <div className="space-y-2">
+              <Label>Wärmepumpe mit Wassererwärmung</Label>
+              <Input {...register("hotWaterIncluded")} placeholder="z. B. Ja, Warmwasser aufbereiten" />
+            </div>
+            <div className="space-y-2">
+              <Label>Zeitrahmen</Label>
+              <Input {...register("timeframe")} placeholder="z. B. Sofort bis 3 Monate" />
+            </div>
+            <div className="space-y-2">
+              <Label>Erreichbarkeit</Label>
+              <Input {...register("availability")} placeholder="z. B. Mittags (11h-14h)" />
+            </div>
+            <div className="space-y-2">
+              <Label>Jahresverbrauch in kWh (Gas)</Label>
+              <Input {...register("annualKwhGas")} />
+            </div>
+            <div className="space-y-2">
+              <Label>Jahresverbrauch in Liter (Heizöl)</Label>
+              <Input {...register("annualLitersOil")} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Zusätzliche Projektinformationen</Label>
+            <Textarea {...register("additionalInfo")} rows={3} />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Notizen</CardTitle>
         </CardHeader>
         <CardContent>

@@ -4,7 +4,23 @@ import { simpleParser } from "mailparser";
 import { db } from "@/lib/db";
 import { redis, ImapJobData } from "@/lib/queue";
 
-interface ParsedContact {
+interface InquiryFields {
+  ownership?: string;
+  buildingType?: string;
+  constructionYear?: string;
+  householdSize?: string;
+  currentHeating?: string;
+  currentFuel?: string;
+  heatingAge?: string;
+  hotWaterIncluded?: string;
+  timeframe?: string;
+  availability?: string;
+  annualKwhGas?: string;
+  annualLitersOil?: string;
+  additionalInfo?: string;
+}
+
+interface ParsedContact extends InquiryFields {
   salutation?: string;
   firstName: string;
   lastName: string;
@@ -16,6 +32,31 @@ interface ParsedContact {
   city?: string;
   message?: string;
 }
+
+// Maps lowercased German labels → Client column names
+const INQUIRY_FIELD_MAP: Record<string, keyof InquiryFields> = {
+  "eigentumsverhältnis": "ownership",
+  "eigentümer": "ownership",
+  "gebäudetyp": "buildingType",
+  "baujahr": "constructionYear",
+  "personenanzahl im haushalt": "householdSize",
+  "personenanzahl": "householdSize",
+  "aktuelle heizung": "currentHeating",
+  "genutzter brennstoff": "currentFuel",
+  "brennstoff": "currentFuel",
+  "alter der heizung": "heatingAge",
+  "heizungsalter": "heatingAge",
+  "wärmepumpe mit wassererwärmung": "hotWaterIncluded",
+  "wärmepumpe mit wassererwärmung?": "hotWaterIncluded",
+  "warmwasser": "hotWaterIncluded",
+  "zeitrahmen": "timeframe",
+  "erreichbarkeit": "availability",
+  "jahresverbrauch in kwh (gas)": "annualKwhGas",
+  "jahresverbrauch in kwh": "annualKwhGas",
+  "jahresverbrauch in liter (heizöl)": "annualLitersOil",
+  "jahresverbrauch in liter": "annualLitersOil",
+  "zusätzliche projektinformationen": "additionalInfo",
+};
 
 // Parse HTML table: extract key-value pairs from <td>label</td><td>value</td>
 function parseHtmlTable(html: string): Record<string, string> {
@@ -53,12 +94,21 @@ function parseFullAddress(address: string): { street: string; houseNumber: strin
   return { street: address, houseNumber: "", postalCode: "", city: "" };
 }
 
-// Fields that belong to the Rechner (calculator) form, not contact info
-const RECHNER_FIELDS = new Set([
-  "gebäudetyp", "eigentümer", "baujahr", "wohnfläche", "dämmung", "fenster",
-  "aktuelle heizung", "heizungsalter", "warmwasser", "wärmepumpentyp",
-  "photovoltaik", "zeitrahmen",
+// Contact/address keys that should not leak into the free-text notes
+const CONTACT_KEYS = new Set([
+  "name", "anrede", "e-mail", "email", "telefon", "tel", "phone",
+  "adresse", "straße", "plz", "postleitzahl", "stadt", "ort", "city",
+  "nachricht", "message", "anmerkung", "kommentar",
 ]);
+
+function extractInquiryFields(fields: Record<string, string>): InquiryFields {
+  const result: InquiryFields = {};
+  for (const [key, target] of Object.entries(INQUIRY_FIELD_MAP)) {
+    const value = fields[key];
+    if (value) result[target] = value;
+  }
+  return result;
+}
 
 function parseContactFromFields(fields: Record<string, string>, isRechner: boolean): ParsedContact | null {
   const rawName = fields["name"];
@@ -97,18 +147,24 @@ function parseContactFromFields(fields: Record<string, string>, isRechner: boole
     if (addr.city) city = addr.city;
   }
 
-  // Build notes: user message + Rechner details
+  // Structured inquiry fields → Client columns
+  const inquiry = extractInquiryFields(fields);
+
+  // Build notes from user message + any unrecognised extra fields
   const parts: string[] = [];
   const userMessage = fields["nachricht"] || fields["message"] || fields["anmerkung"] || fields["kommentar"];
   if (userMessage) parts.push(userMessage);
 
   if (isRechner) {
-    const rechnerLines: string[] = [];
-    for (const key of RECHNER_FIELDS) {
-      if (fields[key]) rechnerLines.push(`${key.charAt(0).toUpperCase() + key.slice(1)}: ${fields[key]}`);
+    const handled = new Set<string>([...Object.keys(INQUIRY_FIELD_MAP), ...CONTACT_KEYS]);
+    const extraLines: string[] = [];
+    for (const [key, value] of Object.entries(fields)) {
+      if (handled.has(key)) continue;
+      if (!value) continue;
+      extraLines.push(`${key.charAt(0).toUpperCase() + key.slice(1)}: ${value}`);
     }
-    if (rechnerLines.length > 0) {
-      parts.push("--- Wärmepumpen-Rechner ---\n" + rechnerLines.join("\n"));
+    if (extraLines.length > 0) {
+      parts.push("--- Weitere Angaben ---\n" + extraLines.join("\n"));
     }
   }
 
@@ -123,6 +179,7 @@ function parseContactFromFields(fields: Record<string, string>, isRechner: boole
     postalCode: postalCode || "00000",
     city: city || "-",
     message: parts.join("\n\n") || undefined,
+    ...inquiry,
   };
 }
 
@@ -289,6 +346,19 @@ async function processImapJob(job: Job<ImapJobData>) {
               status: "NEU",
               substatus: "IN_KONTAKT",
               source: "website",
+              ownership: contact.ownership || null,
+              buildingType: contact.buildingType || null,
+              constructionYear: contact.constructionYear || null,
+              householdSize: contact.householdSize || null,
+              currentHeating: contact.currentHeating || null,
+              currentFuel: contact.currentFuel || null,
+              heatingAge: contact.heatingAge || null,
+              hotWaterIncluded: contact.hotWaterIncluded || null,
+              timeframe: contact.timeframe || null,
+              availability: contact.availability || null,
+              annualKwhGas: contact.annualKwhGas || null,
+              annualLitersOil: contact.annualLitersOil || null,
+              additionalInfo: contact.additionalInfo || null,
             },
           });
 

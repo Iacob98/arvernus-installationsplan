@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { NumberField, TextAreaField } from "../field-helpers";
+import { NumberField, TextAreaField, SelectField, FormSubsection } from "../field-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,10 +48,28 @@ export function HeatingCircuitsForm({ data, onChange }: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      <NumberField data={data} onChange={onChange} field="totalCircuits" label="Gesamtanzahl Heizkreise" />
+    <div className="space-y-6">
+      <FormSubsection title="Heizkreise (Übersicht)">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <NumberField data={data} onChange={onChange} field="totalCircuits" label="Gesamtanzahl Heizkreise" />
+          <NumberField data={data} onChange={onChange} field="circuitsHeizkoerper" label="Heizkreise für Heizkörper" />
+          <NumberField data={data} onChange={onChange} field="circuitsFussboden" label="Heizkreise für Fußbodenheizung" />
+        </div>
+        <SelectField
+          data={data} onChange={onChange} field="rohrsystem" label="Rohrsystem"
+          options={[
+            { value: "Einrohrsystem", label: "Einrohrsystem" },
+            { value: "Zweirohrsystem", label: "Zweirohrsystem" },
+          ]}
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <NumberField data={data} onChange={onChange} field="anzahlHeizkoerper" label="Anzahl Heizkörper" />
+          <NumberField data={data} onChange={onChange} field="anzahlHeizschlaufen" label="Anzahl Heizschlaufen" />
+          <NumberField data={data} onChange={onChange} field="anzahlZuTauschen" label="Anzahl zu tauschen" />
+        </div>
+      </FormSubsection>
 
-      <div className="space-y-3">
+      <FormSubsection title="Heizkörper (Detail)">
         <div className="flex items-center justify-between">
           <Label className="text-base font-medium">Heizkörper</Label>
           <Button type="button" variant="outline" size="sm" onClick={addCircuit}>
@@ -62,7 +79,7 @@ export function HeatingCircuitsForm({ data, onChange }: Props) {
         </div>
 
         {circuits.map((circuit, index) => (
-          <div key={index} className="p-4 border rounded-lg space-y-3">
+          <div key={index} className="p-4 border rounded-lg space-y-3 bg-background">
             <div className="flex items-center justify-between">
               <span className="font-medium text-sm">Heizkörper #{circuit.number || index + 1}</span>
               <Button type="button" variant="ghost" size="sm" onClick={() => removeCircuit(index)}>
@@ -95,7 +112,7 @@ export function HeatingCircuitsForm({ data, onChange }: Props) {
             </div>
           </div>
         ))}
-      </div>
+      </FormSubsection>
 
       <TextAreaField data={data} onChange={onChange} field="notes" label="Anmerkungen" placeholder="Weitere Informationen zu den Heizkreisen..." />
     </div>

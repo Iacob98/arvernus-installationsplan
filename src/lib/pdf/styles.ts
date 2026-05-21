@@ -485,6 +485,74 @@ export function getPdfStyles(primaryColor: string, secondaryColor: string): stri
       color: #444;
     }
 
+    /* ===== SUB-SECTION HEADING (h3 inside a section page) ===== */
+    .content-block-title {
+      font-size: 11pt;
+      font-weight: 600;
+      color: ${primaryColor};
+      margin: 18px 0 6px 0;
+      padding-bottom: 4px;
+      border-bottom: 1pt solid #e0e0e0;
+    }
+
+    .content-block-title:first-of-type {
+      margin-top: 4px;
+    }
+
+    /* ===== ELECTRICIAN CHECKLIST TABLE ===== */
+    .checklist-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt;
+      margin: 14px 0;
+    }
+
+    .checklist-table thead th {
+      background: ${primaryColor};
+      color: #fff;
+      text-align: left;
+      padding: 6px 10px;
+      font-weight: 600;
+      font-size: 9pt;
+    }
+
+    .checklist-table tbody td {
+      padding: 5px 10px;
+      border-bottom: 0.5pt solid #e8e8e8;
+      vertical-align: top;
+    }
+
+    .checklist-table .group-row td {
+      background: #eef2f7;
+      font-weight: 700;
+      color: ${primaryColor};
+      padding: 7px 10px;
+      border-bottom: 1pt solid #d6dde6;
+    }
+
+    .checklist-table td:nth-child(1) {
+      width: 8%;
+      color: #888;
+      font-weight: 500;
+    }
+
+    .checklist-table td:nth-child(2) {
+      width: 42%;
+    }
+
+    .checklist-table td:nth-child(3) {
+      width: 25%;
+      font-weight: 500;
+      color: #222;
+    }
+
+    .checklist-table td:nth-child(4) {
+      width: 25%;
+      color: #666;
+      font-style: italic;
+      font-size: 8.5pt;
+    }
+
     /* ===== SIGNATURE ===== */
     .signature-area {
       margin-top: 40px;

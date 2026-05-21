@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { getFileBuffer } from "@/lib/storage";
 import { getPdfStyles } from "./styles";
 import { getLogoBase64 } from "./logo";
-import { SECTION_LABELS, SECTION_ORDER } from "@/lib/validations/sections";
+import { SECTION_LABELS } from "@/lib/validations/sections";
 
 import { Client, Project, ProjectSection, Photo, HeatingCircuitItem, CompanySettings } from "@prisma/client";
 
@@ -158,6 +158,8 @@ export async function renderPdfHtml(projectId: string): Promise<string> {
     sectionHtmls.push(html);
   }
 
+  const checklistHtml = renderElectricianChecklist(project, company);
+
   return `<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -166,6 +168,7 @@ export async function renderPdfHtml(projectId: string): Promise<string> {
 </head>
 <body>
   ${sectionHtmls.join("\n")}
+  ${checklistHtml}
 </body>
 </html>`;
 }
@@ -308,14 +311,22 @@ function renderSection(
       return `<div class="page">
         ${header}
         ${sectionTitleBlock("Technische Planung")}
+        <h3 class="content-block-title">Auslegung</h3>
+        <table class="spec-table">
+          ${specRow("Norm-Gebäudeheizlast", data.normHeatLoad, "kW")}
+          ${specRow("Normaußentemperatur", data.normOutdoorTemp, "°C")}
+          ${specRow("Temperatur am Bivalenzpunkt", data.bivalencePoint, "°C")}
+          ${specRow("Zu verbauende kW-Klasse", data.kwClass)}
+          ${specRow("Hersteller", data.manufacturer)}
+          ${specRow("Kältemittel", data.refrigerant)}
+        </table>
+        <h3 class="content-block-title">Wärmepumpe</h3>
         <table class="spec-table">
           ${specRow("Modell", data.heatPumpModel)}
-          ${specRow("Hersteller", data.manufacturer)}
           ${specRow("Heizleistung", data.heatingCapacity, "kW")}
           ${specRow("Kühlleistung", data.coolingCapacity, "kW")}
           ${specRow("Vorlauftemperatur", data.flowTemperature, "°C")}
           ${specRow("Rücklauftemperatur", data.returnTemperature, "°C")}
-          ${specRow("Kältemittel", data.refrigerant)}
           ${specRow("Schallleistungspegel", data.soundPowerLevel, "dB(A)")}
           ${specRow("COP", data.cop)}
         </table>
@@ -327,12 +338,32 @@ function renderSection(
       return `<div class="page">
         ${header}
         ${sectionTitleBlock("Aufstellort")}
+        <h3 class="content-block-title">Aufstellort Wärmepumpe</h3>
         <table class="spec-table">
-          ${specRow("Fundamenttyp", data.foundationType)}
+          ${specRow("Fundamentart", data.foundationType)}
           ${specRow("Untergrund", data.surfaceType)}
+          ${specRow("Aushubreste", data.aushubrestEntsorgung)}
+          ${specRow("Schutzbereichherstellung für Propan", data.schutzbereichPropan)}
+          ${specRow("Anfahrschutz notwendig", data.anfahrschutz)}
+          ${specRow("Abdeckhaube Buderus", data.abdeckhaubeBuderus)}
           ${specRow("Abstand zur Hauswand", data.distanceToWall, "cm")}
           ${specRow("Abstand zum Nachbarn", data.distanceToNeighbor, "m")}
           ${specRow("Lichte Höhe", data.clearanceHeight, "cm")}
+        </table>
+        <h3 class="content-block-title">Hauseinführung</h3>
+        <table class="spec-table">
+          ${specRow("Hauseinführung", data.hauseinfuehrungArt)}
+          ${specRow("Hauseinführung zu Außeneinheit: Entfernung", data.hauseinfuehrungEntfernung, "m")}
+          ${specRow("Hauseinführung zu Außeneinheit: Leitungsführung", data.hauseinfuehrungLeitungsfuehrung)}
+          ${specRow("Hauseinführung zu Außeneinheit: Oberfläche", data.hauseinfuehrungOberflaeche)}
+          ${specRow("Länge benötigtes Wellrohr", data.wellrohrLaenge, "m")}
+        </table>
+        <h3 class="content-block-title">Vorschriften & Logistik</h3>
+        <table class="spec-table">
+          ${specRow("TA-Lärm eingehalten", data.taLaermEingehalten)}
+          ${specRow("Baurecht eingehalten", data.baurechtEingehalten)}
+          ${specRow("Tragehilfe benötigt", data.tragehilfeBenoetigt)}
+          ${specRow("Gerüst oder Hebebühne für Heizungsinstallation", data.geruestHebebuehne)}
         </table>
         ${renderPhotos(photos, photoUrls)}
         ${str(data.requirements) ? `<div class="content-block"><h3>Anforderungen</h3><p>${esc(str(data.requirements))}</p></div>` : ""}
@@ -356,11 +387,28 @@ function renderSection(
           </ul>
         </div>
 
+        <h3 class="content-block-title">Bestandsanlage</h3>
         <table class="spec-table">
-          ${specRow("Heizungsart", data.currentHeatingType)}
+          ${specRow("Aktueller Energieträger", data.currentHeatingType)}
+          ${specRow("Typenbezeichnung Bestandanlage", data.typenbezeichnungBestand)}
+          ${specRow("Jahr der Inbetriebnahme der alten Heizanlage", data.inbetriebnahmeJahr)}
           ${specRow("Entsorgung erforderlich", data.disposalRequired ? "Ja" : "Nein")}
-          ${specRow("Solarpanels vorhanden", data.hasSolarPanels ? "Ja" : "Nein")}
+          ${specRow("Solarthermie vorhanden", data.hasSolarPanels ? "Ja" : "Nein")}
+          ${data.hasSolarPanels ? specRow("Solar-Details", data.solarPanelDetails) : ""}
+        </table>
+        <h3 class="content-block-title">Gas-Daten</h3>
+        <table class="spec-table">
+          ${specRow("Rückbau alter Gasleitung", data.ruckbauGasleitung)}
+          ${specRow("Gaszählernummer", data.gaszaehlerNummer)}
+          ${specRow("Gaszählerstand", data.gaszaehlerStandM3, "m³")}
+        </table>
+        <h3 class="content-block-title">Warmwasser & Hydraulik (Bestand)</h3>
+        <table class="spec-table">
           ${specRow("Warmwasserbereitung", data.hotWaterSystem)}
+          ${specRow("Warmwasserbereitung über Heizungsanlage", data.warmwasserUeberHeizung)}
+          ${specRow("Zirkulationsleitung vorhanden", data.zirkulationsleitung)}
+          ${specRow("Druckminderer vorhanden", data.druckminderer)}
+          ${specRow("Kondensatpumpe notwendig", data.kondensatpumpe)}
         </table>
         ${renderPhotos(photos, photoUrls)}
         ${renderNotes(str(data.notes))}
@@ -371,7 +419,15 @@ function renderSection(
       return `<div class="page">
         ${header}
         ${sectionTitleBlock("Heizkreise")}
-        ${data.totalCircuits ? `<p style="margin-bottom:14px;font-size:10pt;">Gesamtanzahl Heizkreise: <strong>${data.totalCircuits}</strong></p>` : ""}
+        <table class="spec-table">
+          ${specRow("Gesamtanzahl Heizkreise", data.totalCircuits)}
+          ${specRow("Anzahl Heizkreise für Heizkörper", data.circuitsHeizkoerper)}
+          ${specRow("Anzahl Heizkreise für Fußbodenheizung", data.circuitsFussboden)}
+          ${specRow("Rohrsystem", data.rohrsystem)}
+          ${specRow("Anzahl Heizkörper", data.anzahlHeizkoerper)}
+          ${specRow("Anzahl Heizschlaufen", data.anzahlHeizschlaufen)}
+          ${specRow("Anzahl der zu tauschenden Heizkörper", data.anzahlZuTauschen)}
+        </table>
         ${circuits.length > 0
           ? `<table class="circuit-table">
             <tr><th>#</th><th>Etage</th><th>Raum</th><th>Typ</th><th>Modell</th><th>Leistung</th></tr>
@@ -394,10 +450,24 @@ function renderSection(
       return `<div class="page">
         ${header}
         ${sectionTitleBlock("Hydraulik")}
+        <h3 class="content-block-title">Hydraulik</h3>
         <table class="spec-table">
           ${specRow("Inneneinheit", data.indoorUnitType)}
+          ${specRow("Systemtrennung verbauen", data.systemtrennung)}
+          ${specRow("Zuwegung und Einbringung ausreichend", data.zuwegungAusreichend)}
+          ${specRow("Platz für verkaufte Hydraulik", data.platzHydraulik)}
+          ${specRow("Hydraulikschema", data.hydraulikSchema)}
+          ${specRow("Etage neues Heizsystem", data.etage)}
           ${specRow("Pufferspeicher", data.bufferTankVolume, "Liter")}
           ${specRow("Warmwasserspeicher", data.hotWaterTankVolume, "Liter")}
+        </table>
+        <h3 class="content-block-title">Wassermessung & Aufbereitung</h3>
+        <table class="spec-table">
+          ${specRow("Anzahl Wärmemengenzähler", data.anzahlWMZ)}
+          ${specRow("Trinkwasserenthärtung", data.trinkwasserEnthaertung)}
+          ${specRow("Entsalzungspatrone", data.entsalzungspatrone)}
+          ${specRow("Wohnungswasserzähler warm", data.wzWarm)}
+          ${specRow("Wohnungswasserzähler kalt", data.wzKalt)}
         </table>
         ${renderPhotos(photos, photoUrls)}
         ${renderNotes(str(data.notes))}
@@ -406,11 +476,13 @@ function renderSection(
     case "PIPING":
       return `<div class="page">
         ${header}
-        ${sectionTitleBlock("Rohrleitungen")}
+        ${sectionTitleBlock("Rohrleitungen / Verrohrung")}
         <table class="spec-table">
-          ${specRow("Wanddurchbrüche", data.wallPenetrations)}
-          ${specRow("Deckendurchbrüche", data.floorPenetrations)}
-          ${specRow("Rohrleitungslänge", data.pipeLength, "m")}
+          ${specRow("Anzahl Wanddurchbrüche", data.wallPenetrations)}
+          ${specRow("Anzahl Deckendurchbrüche", data.floorPenetrations)}
+          ${specRow("Rohrlänge Hauseinführung → Inneneinheit", data.rohrlaengeHEzuInnen, "m")}
+          ${specRow("Länge zusätzlicher Verrohrung innen", data.zusaetzlicheVerrohrung, "m")}
+          ${specRow("Gesamt-Rohrleitungslänge", data.pipeLength, "m")}
           ${specRow("Isolierung", data.insulationType)}
         </table>
         ${renderPhotos(photos, photoUrls)}
@@ -420,14 +492,40 @@ function renderSection(
     case "ELECTRICAL_PLANNING":
       return `<div class="page">
         ${header}
-        ${sectionTitleBlock("Elektroplanung")}
+        ${sectionTitleBlock("Elektrische Planung")}
+        <h3 class="content-block-title">Hausanschlusskasten</h3>
         <table class="spec-table">
+          ${specRow("Hausanschlusskasten ausreichend", data.hakAusreichend)}
+          ${specRow("Aufstellort des Hausanschlusskastens", data.hakAufstellort)}
+          ${specRow("HAK Potentialausgleich vorhanden", data.hakPotentialausgleich)}
           ${specRow("Hauptsicherung", data.mainFuseSize)}
-          ${specRow("PV-Anlage", data.hasPvSystem ? "Ja" : "Nein")}
+        </table>
+        <h3 class="content-block-title">Potentialausgleich & Erdung</h3>
+        <table class="spec-table">
+          ${specRow("Potentialausgleich ausreichend", data.potentialausgleichAusreichend)}
+          ${specRow("Ausführung Potentialausgleich", data.potentialausgleichAusfuehrung)}
+          ${specRow("Tiefenerder erforderlich", data.tiefenerderErforderlich)}
+        </table>
+        <h3 class="content-block-title">HEMS / Internet</h3>
+        <table class="spec-table">
+          ${specRow("Internetverbindung für t-smart", data.hemsInternetVerbindung)}
+          ${specRow("LAN-Buchse für HEMS frei", data.hemsLanBuchseFrei)}
+          ${specRow("Steckdose nahe dem Router", data.hemsSteckdoseRouter)}
+        </table>
+        <h3 class="content-block-title">PV-Anlage</h3>
+        <table class="spec-table">
+          ${specRow("PV-Anlage vorhanden", data.hasPvSystem ? "Ja" : "Keine PV-Anlage")}
           ${data.hasPvSystem ? specRow("PV-Leistung", data.pvSystemSize, "kWp") : ""}
           ${data.hasPvSystem ? specRow("Wechselrichter", data.inverterType) : ""}
           ${specRow("Batteriespeicher", data.batteryStorage ? "Ja" : "Nein")}
           ${data.batteryStorage ? specRow("Kapazität", data.batteryCapacity, "kWh") : ""}
+        </table>
+        <h3 class="content-block-title">Zusatzgeräte</h3>
+        <table class="spec-table">
+          ${specRow("Wallbox", data.wallbox)}
+          ${specRow("Elektrospeicher", data.elektrospeicher)}
+          ${specRow("Durchlauferhitzer", data.durchlauferhitzer)}
+          ${specRow("Klimageräte", data.klimageraete)}
         </table>
         ${renderPhotos(photos, photoUrls)}
         ${renderNotes(str(data.notes))}
@@ -436,9 +534,12 @@ function renderSection(
     case "TARIFF_METER":
       return `<div class="page">
         ${header}
-        ${sectionTitleBlock("Tarif & Zähler")}
+        ${sectionTitleBlock("Stromtarif & Tarifschaltgerät")}
         <table class="spec-table">
-          ${specRow("Tarifart", data.tariffType)}
+          ${specRow("Stromtarif für Wärmepumpe nach §14a", data.tariffType)}
+          ${specRow("Netzbetreiber", data.netzbetreiber)}
+          ${specRow("Netzbetreiber – Bemerkung", data.netzbetreiberBemerkung)}
+          ${specRow("Ausführung Tarifschaltgerät (TSG)", data.tsgAusfuehrung)}
           ${specRow("Zählernummer", data.meterNumber)}
           ${specRow("Zählerstandort", data.meterLocation)}
         </table>
@@ -450,9 +551,23 @@ function renderSection(
       return `<div class="page">
         ${header}
         ${sectionTitleBlock("Zählerschrank")}
+        <h3 class="content-block-title">Zählerschrank: Allgemein</h3>
         <table class="spec-table">
-          ${specRow("Tausch erforderlich", data.replacementRequired ? "Ja" : "Nein")}
+          ${specRow("Zählerschrank ausreichend", data.zaehlerschrankAusreichend)}
+          ${specRow("Bestandshauptzähler ausreichend", data.bestandshauptzaehlerAusreichend)}
+          ${specRow("Anzahl der Zähler", data.anzahlZaehler)}
+          ${specRow("Zählernummer Hauptzähler", data.zaehlernummerHaupt)}
+          ${specRow("Zählernummer 2", data.zaehlernummer2)}
+          ${specRow("Zählerzusammenlegung", data.zaehlerzusammenlegung)}
+          ${specRow("WP-Anschluss", data.wpAnschluss)}
+          ${specRow("Zählerschranktausch erforderlich", data.replacementRequired ? "Ja" : "Nein")}
           ${data.replacementRequired ? specRow("Neuer Standort", data.newPanelLocation) : ""}
+        </table>
+        <h3 class="content-block-title">Zählerschrank: Ertüchtigung</h3>
+        <table class="spec-table">
+          ${specRow("Zählervorsicherung ausreichend", data.vorsicherungAusreichend)}
+          ${specRow("Bemessungsstrom Zählervorsicherung", data.bemessungsstromVorsicherung, "A")}
+          ${specRow("Überspannungsschutz vorhanden", data.ueberspannungsschutz)}
         </table>
         ${str(data.instructions) ? `<div class="info-card"><div class="card-heading"><span class="card-icon">${ICONS.clipboardText(28, company.primaryColor)}</span><span class="card-title">Anweisungen</span></div><p class="card-text">${esc(str(data.instructions))}</p></div>` : ""}
         ${renderPhotos(photos, photoUrls)}
@@ -463,9 +578,25 @@ function renderSection(
       return `<div class="page">
         ${header}
         ${sectionTitleBlock("Kabelwege")}
+        <h3 class="content-block-title">Strecke A: HAK ↔ Zählerschrank</h3>
         <table class="spec-table">
-          ${specRow("Kabellänge", data.cableLength, "m")}
+          ${specRow("Hauptleitung HAK → ZS: Erneuerung", data.hakZsErneuerung)}
+          ${specRow("Bemerkung", data.hakZsBemerkung)}
         </table>
+        <h3 class="content-block-title">Strecke B: Zählerschrank ↔ Steuerschrank</h3>
+        <table class="spec-table">
+          ${specRow("Leitungslänge", data.zsScLaenge, "m")}
+          ${specRow("Anzahl Wanddurchbrüche", data.zsScWanddurchbrueche)}
+          ${specRow("Anzahl Deckendurchbrüche", data.zsScDeckendurchbrueche)}
+        </table>
+        <h3 class="content-block-title">Strecke C: Steuerschrank ↔ Wärmepumpe</h3>
+        <table class="spec-table">
+          ${specRow("Leitungslänge Steuerschrank → WP/Inneneinheit", data.scWpLaenge, "m")}
+          ${specRow("Leitungslänge Steuerschrank → Backup Heater", data.scBackupHeaterLaenge, "m")}
+          ${specRow("Leitungsverlegung durch Badezimmer", data.verlegungBadezimmer)}
+          ${specRow("Heizungsdemontage für Elektroinstallation notwendig", data.heizungsdemontageElektro)}
+        </table>
+        ${str(data.cableLength) ? `<table class="spec-table">${specRow("Gesamtkabellänge", data.cableLength, "m")}</table>` : ""}
         ${str(data.routeDescription) ? `<div class="content-block"><h3>Beschreibung der Kabelführung</h3><p>${esc(str(data.routeDescription))}</p></div>` : ""}
         ${renderPhotos(photos, photoUrls)}
         ${renderNotes(str(data.notes))}
@@ -475,8 +606,16 @@ function renderSection(
       return `<div class="page">
         ${header}
         ${sectionTitleBlock("Steuerschrank")}
+        <h3 class="content-block-title">Steuerschrank-Paket</h3>
         <table class="spec-table">
-          ${specRow("Typ", data.cabinetType)}
+          ${specRow("Steuerschrank-Paket vorhanden", data.paketVorhanden)}
+          ${specRow("Paket-Bemerkung", data.paketBemerkung)}
+          ${specRow("Montagestelle festgelegt", data.montagestelleFestgelegt)}
+          ${specRow("Potentialausgleichschiene neben Steuerschrank", data.potentialausgleichschiene)}
+        </table>
+        <h3 class="content-block-title">Schrank-Spezifikation</h3>
+        <table class="spec-table">
+          ${specRow("Schrank-Typ", data.cabinetType)}
           ${specRow("Maße", data.dimensions)}
           ${specRow("Standort", data.location)}
         </table>
@@ -487,11 +626,19 @@ function renderSection(
     case "ADDITIONAL_EQUIPMENT":
       return `<div class="page">
         ${header}
-        ${sectionTitleBlock("Zusatzausstattung")}
+        ${sectionTitleBlock("Sonstige Zusatzausstattung")}
+        <h3 class="content-block-title">Lagerung & Liste</h3>
         <table class="spec-table">
           ${specRow("Lagerort", data.storageLocation)}
         </table>
         ${str(data.equipmentList) ? `<div class="content-block"><h3>Ausstattungsliste</h3><p>${esc(str(data.equipmentList))}</p></div>` : ""}
+        <h3 class="content-block-title">Voraussetzungen für Elektroinstallation</h3>
+        <table class="spec-table">
+          ${specRow("Öltankentsorgung für Elektroinstallation", data.oeltankentsorgungElektro)}
+          ${specRow("Gerüst notwendig für Elektroinstallation", data.geruestNotwendigElektro)}
+          ${specRow("Sondermaterial Elektro erforderlich", data.sondermaterialElektroVorhanden)}
+          ${data.sondermaterialElektroVorhanden === "Ja" ? specRow("Sondermaterial – Details", data.sondermaterialElektroDetails) : ""}
+        </table>
         ${renderPhotos(photos, photoUrls)}
         ${renderNotes(str(data.notes))}
       </div>`;
@@ -625,4 +772,121 @@ function esc(text: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+// ─── Electrician checklist (Vormontagecheckliste – Elektro) ───
+
+type ChecklistRow = [string, string, string, string];
+
+function fmtVal(value: unknown, unit?: string): string {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "boolean") return value ? "Ja" : "Nein";
+  const s = String(value);
+  return unit ? `${s} ${unit}` : s;
+}
+
+function checklistGroupRows(title: string, rows: ChecklistRow[]): string {
+  const hasContent = rows.some(([, , value, note]) => value || note);
+  if (!hasContent) return "";
+  return `<tr class="group-row"><td colspan="4">${esc(title)}</td></tr>
+    ${rows
+      .map(
+        ([num, item, value, note]) =>
+          `<tr>
+            <td>${esc(num)}</td>
+            <td>${esc(item)}</td>
+            <td>${esc(value)}</td>
+            <td>${esc(note)}</td>
+          </tr>`,
+      )
+      .join("")}`;
+}
+
+function renderElectricianChecklist(
+  project: ProjectData,
+  company: CompanyData,
+): string {
+  const sec = (type: string): Record<string, unknown> => {
+    const s = project.sections.find((x) => x.type === type);
+    return (s?.data as Record<string, unknown>) || {};
+  };
+
+  const tp = sec("TECHNICAL_PLANNING");
+  const hyd = sec("HYDRAULICS");
+  const ts = sec("TARIFF_METER");
+  const cc = sec("CONTROL_CABINET");
+  const pr = sec("PANEL_REPLACEMENT");
+  const cr = sec("CABLE_ROUTES");
+  const ep = sec("ELECTRICAL_PLANNING");
+  const ae = sec("ADDITIONAL_EQUIPMENT");
+
+  const header = pageHeader(project, company);
+
+  const groups: string[] = [
+    checklistGroupRows("1. Projektdaten", [
+      ["1.1", "BV-Nummer", esc(project.projectNumber || ""), ""],
+      ["1.2", "WP-Modell / Außeneinheit", fmtVal(tp.heatPumpModel), ""],
+      ["1.3", "Inneneinheit", fmtVal(hyd.indoorUnitType), ""],
+      ["1.4", "Netzbetreiber", fmtVal(ts.netzbetreiber), fmtVal(ts.netzbetreiberBemerkung)],
+    ]),
+    checklistGroupRows("2. Steuerschrank", [
+      ["2.1", "Steuerschrank-Paket vorhanden?", fmtVal(cc.paketVorhanden), fmtVal(cc.paketBemerkung)],
+      ["2.2", "Montagestelle festgelegt?", fmtVal(cc.montagestelleFestgelegt), ""],
+      ["2.3", "Potentialausgleichschiene neben Steuerschrank", fmtVal(cc.potentialausgleichschiene), "Durch Elektriker vor Ort"],
+    ]),
+    checklistGroupRows("3. Zählerschrank (ZS)", [
+      ["3.1", "Neuer Zählerschrank erforderlich?", fmtVal(pr.replacementRequired), ""],
+      ["3.2", "Zählerschrankerneuerung?", fmtVal(pr.zaehlerschrankAusreichend), ""],
+      ["3.3", "TSG-Ausführung", fmtVal(ts.tsgAusfuehrung), ""],
+      ["3.4", "Bestandshauptzähler ausreichend?", fmtVal(pr.bestandshauptzaehlerAusreichend), ""],
+      ["3.5", "Zählernummer Hauptzähler", fmtVal(pr.zaehlernummerHaupt), ""],
+      ["3.6", "Zählerzusammenlegung?", fmtVal(pr.zaehlerzusammenlegung), ""],
+      ["3.7", "Anzahl Bestandszähler", fmtVal(pr.anzahlZaehler), ""],
+      ["3.8", "WP-Anschluss", fmtVal(pr.wpAnschluss), ""],
+    ]),
+    checklistGroupRows("4. Kabelverlegung – Strecke B (ZS ↔ Steuerschrank)", [
+      ["4.1", "Kabellänge", fmtVal(cr.zsScLaenge, "m"), ""],
+      ["4.2", "Wanddurchbrüche erforderlich?", fmtVal(cr.zsScWanddurchbrueche), ""],
+      ["4.3", "Deckendurchbrüche erforderlich?", fmtVal(cr.zsScDeckendurchbrueche), ""],
+    ]),
+    checklistGroupRows("5. HAK & Hauptleitung", [
+      ["5.1", "HAK ausreichend?", fmtVal(ep.hakAusreichend), ""],
+      ["5.2", "Hauptleitung erneuerungsbedürftig?", fmtVal(cr.hakZsErneuerung), fmtVal(cr.hakZsBemerkung)],
+    ]),
+    checklistGroupRows("6. Erdung", [
+      ["6.1", "Tiefenerder erforderlich?", fmtVal(ep.tiefenerderErforderlich), "Durch Elektriker bestätigt"],
+    ]),
+    checklistGroupRows("7. Internet / Smart-Anbindung", [
+      ["7.1", "Internetverbindung für t-smart", fmtVal(ep.hemsInternetVerbindung), ""],
+    ]),
+    checklistGroupRows("8. Sonstiges", [
+      ["8.1", "Sondermaterial Elektro erforderlich?", fmtVal(ae.sondermaterialElektroVorhanden), fmtVal(ae.sondermaterialElektroDetails)],
+      ["8.2", "PV-Anlage vorhanden?", ep.hasPvSystem ? "Ja" : "Nein", ""],
+    ]),
+  ];
+
+  // Hide whole page if no electrical/installer data was filled in
+  if (groups.every((g) => g === "")) return "";
+
+  const subtitle = [
+    project.projectNumber ? `BV Nr.: ${project.projectNumber}` : "",
+    str(tp.heatPumpModel) ? `Modell: ${str(tp.heatPumpModel)}` : "",
+    str(ts.netzbetreiber) ? `Netzbetreiber: ${str(ts.netzbetreiber)}` : "",
+  ]
+    .filter(Boolean)
+    .join("  |  ");
+
+  return `<div class="page">
+    ${header}
+    ${sectionTitleBlock("Vormontagecheckliste – Elektro")}
+    ${subtitle ? `<p style="font-size:9.5pt;color:#555;margin-bottom:12px;">${esc(subtitle)}</p>` : ""}
+    <table class="checklist-table">
+      <thead>
+        <tr><th>#</th><th>Prüfpunkt</th><th>Status / Wert</th><th>Bemerkung</th></tr>
+      </thead>
+      <tbody>
+        ${groups.join("")}
+      </tbody>
+    </table>
+  </div>`;
 }
