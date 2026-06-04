@@ -567,10 +567,11 @@ model Offer {
   pdfStoragePath String?
   pdfFileName    String?
 
-  emailSubject String?
-  emailBody    String?
-  heatBalance  Json?
-  serviceItems Json?
+  emailSubject  String?
+  emailBody     String?
+  heatBalance   Json?
+  serviceItems  Json?
+  kfwFoerderung Json?
 
   clientId String
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)

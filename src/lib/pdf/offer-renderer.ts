@@ -12,6 +12,7 @@ import {
 import { PDFDocument } from "pdf-lib";
 import { OFFER_AGB_INTRO_HTML, OFFER_AGB_OUTRO_HTML } from "./offer-agb";
 import { DEFAULT_SERVICE_ITEMS, parseServiceItems } from "@/lib/offer-service-items";
+import { calcKfw, parseKfwFoerderung } from "@/lib/kfw-foerderung";
 import { Prisma, CatalogItemType, OfferDiscountKind } from "@prisma/client";
 import { calcHeatBalance, MONTHS_DE, parseHeatBalance } from "@/lib/heat-balance";
 import { readFile } from "node:fs/promises";
@@ -304,7 +305,17 @@ function renderSummaryPage(
     )
     .join("");
 
-  const foerderRows = totals.foerderungen
+  const kfw = parseKfwFoerderung(offer.kfwFoerderung);
+  const kfwSummaryRows: { label: string; amount: number }[] = [];
+  if (kfw && kfw.enabled) {
+    const r = calcKfw(kfw);
+    kfwSummaryRows.push({
+      label: `KfW 458 – ${r.percent} %`,
+      amount: r.amount,
+    });
+  }
+  const allFoerderRows = [...kfwSummaryRows, ...totals.foerderungen];
+  const foerderRows = allFoerderRows
     .map(
       (f) =>
         `<div class="row"><span>${escHtml(f.label)}</span><span>- ${fmtEUR(f.amount)}</span></div>`,
@@ -333,7 +344,7 @@ function renderSummaryPage(
     </div>
 
     ${
-      totals.foerderungen.length > 0
+      allFoerderRows.length > 0
         ? `<div class="offer-foerderung-note">
             <div class="offer-section-label">Voraussichtliche Förderungen *</div>
             ${foerderRows}
@@ -525,39 +536,78 @@ function renderFoerderungPage(
   logoSrc: string | null,
   dateLabel: string,
 ): string {
-  const foerderungen = offer.discounts.filter((d) => d.kind === "FOERDERUNG");
-  if (foerderungen.length === 0) return "";
+  const kfw = parseKfwFoerderung(offer.kfwFoerderung);
+  const extraFoerderungen = offer.discounts.filter((d) => d.kind === "FOERDERUNG");
+  const hasKfw = kfw && kfw.enabled;
+  const hasExtras = extraFoerderungen.length > 0;
+  if (!hasKfw && !hasExtras) return "";
 
-  const totalAmount = totals.foerderungTotal;
   const primary = company.primaryColor;
-
   const fallback =
     "Voraussichtlicher Zuschuss. Die Gewährung dieser Förderung ist von einer sorgfältigen Prüfung der Voraussetzungen und der ordnungsgemäßen Einreichung der erforderlichen Unterlagen abhängig.";
 
-  const items = foerderungen
+  let kfwBlock = "";
+  let kfwAmount = 0;
+  if (hasKfw && kfw) {
+    const r = calcKfw(kfw);
+    kfwAmount = r.amount;
+
+    const boni = r.selected
+      .map(
+        (b) => `<div style="padding:10px 0;border-top:1px solid #eee;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+            <div style="font-size:11pt;font-weight:600;color:#111;">${escHtml(b.label)}</div>
+            <div style="font-size:11pt;font-weight:700;color:${primary};">+${b.percent} %</div>
+          </div>
+          <div style="font-size:9pt;color:#555;line-height:1.55;">${escHtml(b.description)}</div>
+        </div>`,
+      )
+      .join("");
+
+    kfwBlock = `<div style="margin-top:16px;page-break-inside:avoid;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;">
+        <div style="flex:1;">
+          <div style="font-size:13pt;font-weight:700;color:#111;">
+            Förderprogramm Wärmepumpe – KfW Förderprogramm 458 – ${r.percent}&nbsp;%
+          </div>
+          <div style="font-size:9pt;color:#666;margin-top:4px;">
+            Förderfähige Kosten: ${fmtEUR(kfw.foerderfaehigeKosten)}
+          </div>
+        </div>
+        <div style="width:55mm;border:1px solid #eee;border-radius:8px;padding:14px;text-align:center;flex-shrink:0;">
+          <div style="font-size:8pt;color:#888;text-transform:uppercase;letter-spacing:0.06em;">Betrag</div>
+          <div style="font-size:20pt;font-weight:700;color:${primary};margin:6px 0;">
+            <span style="font-size:14pt;">✓</span> ${r.percent}&nbsp;%
+          </div>
+          <div style="font-size:11pt;color:#333;">höchstens ${fmtEUR(r.amount)}</div>
+          <div style="font-size:9pt;color:#555;margin-top:4px;">Heizung</div>
+        </div>
+      </div>
+
+      ${boni}
+    </div>`;
+  }
+
+  const extrasBlock = extraFoerderungen
     .map((d) => {
       const amount = toNumber(d.value);
       const desc = d.description?.trim() ? d.description : fallback;
       const descHtml = escHtml(desc).replace(/\n/g, "<br>");
       return `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:16px 0;border-top:1px solid #eee;page-break-inside:avoid;">
         <div style="flex:1;">
-          <div style="font-size:12pt;font-weight:600;color:#111;margin-bottom:6px;">
-            ${escHtml(d.label)}
-          </div>
-          <div style="font-size:9.5pt;color:#555;line-height:1.55;">
-            ${descHtml}
-          </div>
+          <div style="font-size:12pt;font-weight:600;color:#111;margin-bottom:6px;">${escHtml(d.label)}</div>
+          <div style="font-size:9.5pt;color:#555;line-height:1.55;">${descHtml}</div>
         </div>
         <div style="width:55mm;border:1px solid #eee;border-radius:8px;padding:14px;text-align:center;flex-shrink:0;">
           <div style="font-size:8pt;color:#888;text-transform:uppercase;letter-spacing:0.06em;">Betrag</div>
-          <div style="font-size:18pt;font-weight:700;color:${primary};margin:6px 0;">
-            ${fmtEUR(amount)}
-          </div>
+          <div style="font-size:18pt;font-weight:700;color:${primary};margin:6px 0;">${fmtEUR(amount)}</div>
           <div style="font-size:9pt;color:#555;">${escHtml(d.label)}</div>
         </div>
       </div>`;
     })
     .join("");
+
+  const totalAmount = kfwAmount + totals.foerderungTotal;
 
   return `<div class="offer-page">
     ${headerBar(logoSrc, company.name, "", "")}
@@ -565,9 +615,8 @@ function renderFoerderungPage(
     <div class="offer-page-heading">Ihre Förderungen</div>
     <div class="offer-page-sub">Hier sehen Sie die Förderungen, die bei Ihrer Planung berücksichtigt werden. Diese Förderungen beeinflussen das Ergebnis der Wirtschaftlichkeitsberechnung. Der Erhalt von Fördermitteln kann nicht garantiert werden. Die Gewährung von Zuschüssen ist grundsätzlich von einer sorgfältigen Prüfung der Voraussetzungen und der ordnungsgemäßen Einreichung der erforderlichen Unterlagen abhängig.</div>
 
-    <div style="margin-top:10px;">
-      ${items}
-    </div>
+    ${kfwBlock}
+    ${extrasBlock}
 
     <div style="margin-top:28px;display:flex;justify-content:space-between;align-items:flex-end;border-top:2px solid #111;padding-top:14px;">
       <div>
@@ -645,14 +694,17 @@ function renderSignaturePage(
     </div>
 
     <div style="margin-top:22mm;display:grid;grid-template-columns:1fr 1fr;gap:14mm;">
-      <div>
+      <div style="display:flex;flex-direction:column;gap:18mm;">
         <div style="border-top:1px solid #333;padding-top:8px;font-size:9pt;color:#666;">
           Ort, Datum
         </div>
-      </div>
-      <div>
         <div style="border-top:1px solid #333;padding-top:8px;font-size:9pt;color:#666;">
           Unterschrift Kunde
+        </div>
+      </div>
+      <div style="display:flex;align-items:flex-end;">
+        <div style="font-size:9pt;color:#666;line-height:1.5;font-style:italic;">
+          Dieses Angebot ist auch ohne Unterschrift des Anbieters gültig.
         </div>
       </div>
     </div>

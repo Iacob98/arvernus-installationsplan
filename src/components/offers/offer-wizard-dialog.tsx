@@ -39,6 +39,13 @@ import {
   type HeatBalance,
 } from "@/lib/heat-balance";
 import { DEFAULT_SERVICE_ITEMS } from "@/lib/offer-service-items";
+import {
+  DEFAULT_KFW_FOERDERUNG,
+  KFW_BONI,
+  KFW_MAX_PERCENT,
+  calcKfw,
+  type KfwFoerderung,
+} from "@/lib/kfw-foerderung";
 
 const TYPE_LABELS: Record<(typeof CATALOG_ITEM_TYPES)[number], string> = {
   WAERMEPUMPE: "Wärmepumpe",
@@ -55,6 +62,22 @@ const STEPS = [
   "Wärmehaushalt",
   "Abschluss",
 ];
+
+type ErrorTree = Record<string, unknown>;
+
+function collectFirstError(errs: ErrorTree | undefined, path: string[] = []): string | null {
+  if (!errs || typeof errs !== "object") return null;
+  for (const [key, val] of Object.entries(errs)) {
+    if (val && typeof val === "object") {
+      if ("message" in val && typeof (val as { message?: unknown }).message === "string") {
+        return `${[...path, key].join(".")}: ${(val as { message: string }).message}`;
+      }
+      const deep = collectFirstError(val as ErrorTree, [...path, key]);
+      if (deep) return deep;
+    }
+  }
+  return null;
+}
 
 interface ClientInquiry {
   wohnflaecheM2: string | null;
@@ -150,6 +173,7 @@ function OfferWizardContent({
           DEFAULT_HEAT_BALANCE.annualConsumptionKwh,
       },
       serviceItems: [...DEFAULT_SERVICE_ITEMS],
+      kfwFoerderung: { ...DEFAULT_KFW_FOERDERUNG },
     },
   });
 
@@ -193,6 +217,12 @@ function OfferWizardContent({
         toast.error(e instanceof Error ? e.message : "Fehler beim Erstellen");
       }
     });
+  }
+
+  function onInvalid(errs: typeof errors) {
+    const first = collectFirstError(errs);
+    toast.error(first ? `Bitte prüfen: ${first}` : "Bitte alle Pflichtfelder ausfüllen");
+    console.warn("[OfferWizard] validation failed", errs);
   }
 
   function nextStep() {
@@ -285,7 +315,7 @@ function OfferWizardContent({
             ) : (
               <Button
                 type="button"
-                onClick={handleSubmit(onSubmit)}
+                onClick={handleSubmit(onSubmit, onInvalid)}
                 disabled={pending}
               >
                 {pending ? "Wird erstellt…" : "Angebot erstellen"}
@@ -672,12 +702,119 @@ interface DiscountsStepProps {
   totals: ReturnType<typeof calcTotals>;
 }
 
+function KfwCalculator({
+  setValue,
+}: {
+  setValue: ReturnType<typeof useForm<CreateOfferData>>["setValue"];
+}) {
+  const [kfw, setKfw] = useState<KfwFoerderung>(DEFAULT_KFW_FOERDERUNG);
+  const result = calcKfw(kfw);
+
+  function update<K extends keyof KfwFoerderung>(key: K, value: KfwFoerderung[K]) {
+    const next = { ...kfw, [key]: value };
+    setKfw(next);
+    setValue("kfwFoerderung", next, { shouldDirty: true });
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base">KfW 458 — Förderung</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Aktivieren Sie die zutreffenden Boni. Die Förderung wird automatisch
+            berechnet und auf der Förderungen-Seite des PDFs gezeigt.
+          </p>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={kfw.enabled}
+            onChange={(e) => update("enabled", e.target.checked)}
+          />
+          Aktiv
+        </label>
+      </CardHeader>
+      <CardContent
+        className={`space-y-3 ${kfw.enabled ? "" : "opacity-50 pointer-events-none"}`}
+      >
+        <div className="space-y-2">
+          {KFW_BONI.map((b) => {
+            const checked = b.locked || kfw[b.key];
+            return (
+              <label
+                key={b.key}
+                className="flex items-start gap-2 rounded-md border p-3 cursor-pointer hover:bg-muted/40"
+              >
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={checked}
+                  disabled={b.locked}
+                  onChange={(e) =>
+                    !b.locked && update(b.key, e.target.checked)
+                  }
+                />
+                <div className="flex-1 text-sm">
+                  <div className="flex justify-between font-medium">
+                    <span>
+                      {b.label} <span className="text-primary">+{b.percent} %</span>
+                    </span>
+                    {b.locked && (
+                      <span className="text-xs text-muted-foreground">Pflicht</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    {b.description}
+                  </p>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_180px] gap-3 items-end pt-2 border-t">
+          <div className="space-y-1">
+            <Label className="text-xs">Förderfähige Kosten (€)</Label>
+            <Input
+              type="number"
+              step="100"
+              value={kfw.foerderfaehigeKosten}
+              onChange={(e) =>
+                update("foerderfaehigeKosten", Number(e.target.value) || 0)
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              KfW deckelt die förderfähigen Kosten typisch bei 30.000 € pro
+              Wohneinheit.
+            </p>
+          </div>
+          <div className="rounded-md bg-primary/5 p-3 text-center">
+            <div className="text-xs text-muted-foreground">Förderung</div>
+            <div className="text-2xl font-bold text-primary">
+              {result.percent} %
+            </div>
+            <div className="text-sm font-medium">{fmtEUR(result.amount)}</div>
+            {result.percent >= KFW_MAX_PERCENT && (
+              <div className="text-[10px] text-muted-foreground mt-1">
+                Maximum erreicht
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function DiscountsStep({ fields, append, remove, register, setValue, totals }: DiscountsStepProps) {
   return (
     <div className="space-y-4">
+      <KfwCalculator setValue={setValue} />
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Rabatte / Förderungen</CardTitle>
+          <CardTitle className="text-base">Weitere Rabatte</CardTitle>
           <Button
             type="button"
             size="sm"
@@ -756,7 +893,6 @@ function DiscountRow({
             <SelectContent>
               <SelectItem value="PERCENT">Rabatt %</SelectItem>
               <SelectItem value="AMOUNT">Rabatt €</SelectItem>
-              <SelectItem value="FOERDERUNG">Förderung €</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -772,16 +908,7 @@ function DiscountRow({
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
-      {kind === "FOERDERUNG" && (
-        <div className="space-y-1">
-          <Label className="text-xs">Beschreibung (optional, wird im PDF angezeigt)</Label>
-          <Textarea
-            rows={3}
-            placeholder="z. B. Grundförderung 30 % · Effizienzbonus 5 % · Klimageschwindigkeitsbonus 20 %"
-            {...register(`discounts.${idx}.description`)}
-          />
-        </div>
-      )}
+      {/* Förderungen werden separat über den KfW-Block gepflegt */}
     </div>
   );
 }
@@ -810,6 +937,9 @@ function TotalsCard({ totals }: { totals: ReturnType<typeof calcTotals> }) {
             ))}
           </>
         )}
+        <p className="text-xs text-muted-foreground pt-2 border-t">
+          Die KfW-Förderung wird separat im PDF auf der Förderungs-Seite ausgewiesen.
+        </p>
       </CardContent>
     </Card>
   );

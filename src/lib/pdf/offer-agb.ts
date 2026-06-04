@@ -8,7 +8,8 @@ export const OFFER_AGB_INTRO_HTML = `
 
 export const OFFER_AGB_OUTRO_HTML = `
   <h3>Zahlungsbedingungen Wärmepumpe</h3>
-  <p>Nach der Lieferung der Materialien werden 60&nbsp;% der Auftragssumme sofort zur Zahlung fällig. Mit dem Beginn der Arbeiten werden weitere 35&nbsp;% der Auftragssumme fällig. Nach der Fertigstellung der Heizungsanlage werden die restlichen 5&nbsp;% berechnet.</p>
+  <p>Vor der Lieferung der Materialien werden 50&nbsp;% der Auftragssumme sofort zur Zahlung fällig.</p>
+  <p>Nach der Fertigstellung der Heizungsanlage werden die restlichen 50&nbsp;% berechnet.</p>
   <p>Der Inbetriebnahme- / Zählertauschtermin des Energieversorgers kann von uns nicht beeinflusst werden und wird deshalb bei unserer Rechnungsstellung nicht berücksichtigt.</p>
   <p style="font-size:8.5pt;color:#666;">* Bis die Kaufpreisforderung restlos erfüllt ist, bleibt die gelieferte Ware (Vorbehaltsware) Eigentum des Verkäufers.</p>
 `;

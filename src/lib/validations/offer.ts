@@ -37,6 +37,15 @@ export const offerDiscountSchema = z.object({
   order: z.number().int(),
 });
 
+export const kfwFoerderungSchema = z.object({
+  enabled: z.boolean(),
+  grundfoerderung: z.boolean(),
+  einkommensbonus: z.boolean(),
+  geschwindigkeitsbonus: z.boolean(),
+  innovationsbonus: z.boolean(),
+  foerderfaehigeKosten: z.number().nonnegative(),
+});
+
 export const heatBalanceSchema = z.object({
   enabled: z.boolean(),
   annualConsumptionKwh: z.number().nonnegative(),
@@ -58,6 +67,7 @@ export const createOfferSchema = z.object({
   discounts: z.array(offerDiscountSchema),
   heatBalance: heatBalanceSchema,
   serviceItems: z.array(z.string().min(1)),
+  kfwFoerderung: kfwFoerderungSchema,
 });
 
 export const sendOfferSchema = z.object({

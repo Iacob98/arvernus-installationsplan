@@ -113,6 +113,7 @@ export async function createOffer(clientId: string, data: CreateOfferData) {
         validUntilDays: validated.validUntilDays,
         heatBalance: validated.heatBalance,
         serviceItems: validated.serviceItems,
+        kfwFoerderung: validated.kfwFoerderung,
         clientId,
         createdById: session.user.id,
         positions: {
