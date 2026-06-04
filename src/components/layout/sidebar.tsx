@@ -14,6 +14,7 @@ import {
   Settings,
   Menu,
   Package,
+  BarChart3,
 } from "lucide-react";
 import {
   Sheet,
@@ -29,11 +30,13 @@ type NavItem = { href: string; label: string; icon: typeof FolderOpen };
 function getNavItems(role?: string): NavItem[] {
   if (role !== "ADMIN") {
     return [
+      { href: "/kpi", label: "Meine KPI", icon: BarChart3 },
       { href: "/clients", label: "Kunden", icon: Users },
     ];
   }
 
   return [
+    { href: "/kpi", label: "KPI", icon: BarChart3 },
     { href: "/projects", label: "Projekte", icon: FolderOpen },
     { href: "/clients", label: "Kunden", icon: Users },
     { href: "/users", label: "Benutzer", icon: UserCog },
