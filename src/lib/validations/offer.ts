@@ -8,6 +8,8 @@ export const offerInquirySchema = z.object({
   wohnflaecheM2: z.string().nullable().optional(),
   annualKwhGas: z.string().nullable().optional(),
   wohneinheiten: z.string().nullable().optional(),
+  constructionYear: z.string().nullable().optional(),
+  householdSize: z.string().nullable().optional(),
   heizsystem: z.string().nullable().optional(),
   hotWaterIncluded: z.string().nullable().optional(),
   currentHeating: z.string().nullable().optional(),
@@ -68,6 +70,11 @@ export const createOfferSchema = z.object({
   heatBalance: heatBalanceSchema,
   serviceItems: z.array(z.string().min(1)),
   kfwFoerderung: kfwFoerderungSchema,
+});
+
+/** Wie createOfferSchema, aber positions darf leer sein (für Drafts). */
+export const draftOfferSchema = createOfferSchema.extend({
+  positions: z.array(offerPositionSchema),
 });
 
 export const sendOfferSchema = z.object({

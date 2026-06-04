@@ -3,6 +3,7 @@
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-utils";
 import type { Role } from "@prisma/client";
+import { calcLeadScore } from "@/lib/lead-scoring";
 
 export type KpiPeriod = "today" | "week" | "month" | "all";
 
@@ -31,6 +32,18 @@ export type KpiTotals = {
   offersAccepted: number;
   clientsSold: number;
   conversionPct: number;
+  /** Schnitt Stunden vom Kunden-Anlage bis zum ersten Anruf */
+  avgFirstCallHours: number | null;
+  /** Lead-to-Quote: Anteil Kunden im Zeitraum, die mindestens ein Angebot erhalten haben */
+  leadToQuotePct: number;
+  /** Quote-to-Close: Anteil versendeter Angebote, deren Kunde verkauft wurde */
+  quoteToClosePct: number;
+  /** Anteil der versendeten Angebote mit KfW-Förderung */
+  foerderungAnteilPct: number;
+  /** Hot/Warm/Cold-Verteilung (Snapshot — ignoriert Periode) */
+  hotLeads: number;
+  warmLeads: number;
+  coldLeads: number;
 };
 
 export type KpiResult = {
@@ -196,6 +209,7 @@ export async function getKpi(period: KpiPeriod): Promise<KpiResult> {
 
   const totals: KpiTotals = managers.reduce<KpiTotals>(
     (acc, m) => ({
+      ...acc,
       managers: acc.managers + 1,
       assignedClients: acc.assignedClients + m.assignedClients,
       callsTotal: acc.callsTotal + m.callsTotal,
@@ -204,7 +218,6 @@ export async function getKpi(period: KpiPeriod): Promise<KpiResult> {
       offersSent: acc.offersSent + m.offersSent,
       offersAccepted: acc.offersAccepted + m.offersAccepted,
       clientsSold: acc.clientsSold + m.clientsSold,
-      conversionPct: 0,
     }),
     {
       managers: 0,
@@ -216,9 +229,118 @@ export async function getKpi(period: KpiPeriod): Promise<KpiResult> {
       offersAccepted: 0,
       clientsSold: 0,
       conversionPct: 0,
+      avgFirstCallHours: null,
+      leadToQuotePct: 0,
+      quoteToClosePct: 0,
+      foerderungAnteilPct: 0,
+      hotLeads: 0,
+      warmLeads: 0,
+      coldLeads: 0,
     },
   );
   totals.conversionPct = pct(totals.clientsSold, totals.assignedClients);
+
+  // --- Erweiterte Metriken (Team-Ebene) ---
+  const userIds = managers.map((m) => m.userId);
+  const userFilter = restrictUserId ? { in: [restrictUserId] } : { in: userIds };
+
+  const [newClients, clientsWithOffer, sentOffers, foerderOffers, leadScoreSource] =
+    await Promise.all([
+      db.client.count({
+        where: {
+          ...(since ? { createdAt: { gte: since } } : {}),
+          assignedToId: userFilter,
+        },
+      }),
+      db.client.count({
+        where: {
+          ...(since ? { createdAt: { gte: since } } : {}),
+          assignedToId: userFilter,
+          offers: { some: { status: { not: "DRAFT" } } },
+        },
+      }),
+      db.offer.count({
+        where: {
+          ...(since ? { createdAt: { gte: since } } : {}),
+          createdById: userFilter,
+          status: { not: "DRAFT" },
+        },
+      }),
+      db.offer.findMany({
+        where: {
+          ...(since ? { createdAt: { gte: since } } : {}),
+          createdById: userFilter,
+          status: { not: "DRAFT" },
+        },
+        select: { kfwFoerderung: true },
+      }),
+      db.client.findMany({
+        where: { assignedToId: userFilter },
+        select: {
+          ownership: true,
+          constructionYear: true,
+          buildingType: true,
+          heatingAge: true,
+          annualKwhGas: true,
+          annualLitersOil: true,
+          wohnflaecheM2: true,
+          incomeRange: true,
+        },
+        take: 1000,
+      }),
+    ]);
+
+  totals.leadToQuotePct = pct(clientsWithOffer, newClients);
+  totals.quoteToClosePct = pct(totals.clientsSold, sentOffers);
+
+  const withFoerd = foerderOffers.filter((o) => {
+    const k = o.kfwFoerderung as { enabled?: boolean } | null;
+    return k?.enabled === true;
+  }).length;
+  totals.foerderungAnteilPct = pct(withFoerd, foerderOffers.length);
+
+  // Avg time-to-first-call: ищем для каждого клиента первый CallLog
+  const firstCalls = await db.client.findMany({
+    where: {
+      assignedToId: userFilter,
+      callLogs: { some: {} },
+    },
+    select: {
+      createdAt: true,
+      callLogs: {
+        orderBy: { calledAt: "asc" },
+        take: 1,
+        select: { calledAt: true },
+      },
+    },
+    take: 500,
+  });
+  if (firstCalls.length > 0) {
+    const sumHours = firstCalls.reduce((s, c) => {
+      const first = c.callLogs[0]?.calledAt;
+      if (!first) return s;
+      const diffH = (first.getTime() - c.createdAt.getTime()) / 3_600_000;
+      return s + Math.max(0, diffH);
+    }, 0);
+    totals.avgFirstCallHours = Math.round((sumHours / firstCalls.length) * 10) / 10;
+  }
+
+  // Lead-Score-Verteilung
+  for (const c of leadScoreSource) {
+    const r = calcLeadScore({
+      ownership: c.ownership,
+      constructionYear: c.constructionYear,
+      buildingType: c.buildingType,
+      heatingAge: c.heatingAge,
+      annualKwhGas: c.annualKwhGas,
+      annualLitersOil: c.annualLitersOil,
+      wohnflaecheM2: c.wohnflaecheM2,
+      incomeRange: c.incomeRange,
+    });
+    if (r.tier === "hot") totals.hotLeads++;
+    else if (r.tier === "warm") totals.warmLeads++;
+    else totals.coldLeads++;
+  }
 
   return {
     period,

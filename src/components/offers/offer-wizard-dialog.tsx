@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { createOfferSchema, CreateOfferData } from "@/lib/validations/offer";
-import { createOffer } from "@/lib/actions/offers";
+import { createOffer, saveOfferDraft } from "@/lib/actions/offers";
 import type { CatalogItemForClient } from "@/lib/actions/catalog";
 import { calcTotals, fmtEUR } from "@/lib/offer-totals";
 import { CATALOG_ITEM_TYPES } from "@/lib/validations/catalog";
@@ -46,6 +46,12 @@ import {
   calcKfw,
   type KfwFoerderung,
 } from "@/lib/kfw-foerderung";
+import {
+  BAUJAHR_CHIPS,
+  calcHeizlast,
+  type BaujahrChip,
+} from "@/lib/heizlast";
+import { OFFER_TEMPLATES, resolveTemplate } from "@/lib/offer-templates";
 
 const TYPE_LABELS: Record<(typeof CATALOG_ITEM_TYPES)[number], string> = {
   WAERMEPUMPE: "Wärmepumpe",
@@ -83,6 +89,8 @@ interface ClientInquiry {
   wohnflaecheM2: string | null;
   annualKwhGas: string | null;
   wohneinheiten: string | null;
+  constructionYear: string | null;
+  householdSize: string | null;
   heizsystem: string | null;
   hotWaterIncluded: string | null;
   currentHeating: string | null;
@@ -147,6 +155,7 @@ function OfferWizardContent({
     handleSubmit,
     control,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<CreateOfferData>({
     resolver: zodResolver(createOfferSchema),
@@ -157,6 +166,8 @@ function OfferWizardContent({
         wohnflaecheM2: inquiry.wohnflaecheM2 ?? "",
         annualKwhGas: inquiry.annualKwhGas ?? "",
         wohneinheiten: inquiry.wohneinheiten ?? "",
+        constructionYear: inquiry.constructionYear ?? "",
+        householdSize: inquiry.householdSize ?? "",
         heizsystem: inquiry.heizsystem ?? "",
         hotWaterIncluded: inquiry.hotWaterIncluded ?? "",
         currentHeating: inquiry.currentHeating ?? "",
@@ -225,6 +236,20 @@ function OfferWizardContent({
     console.warn("[OfferWizard] validation failed", errs);
   }
 
+  function saveDraft() {
+    const values = getValues();
+    startTransition(async () => {
+      try {
+        const offer = await saveOfferDraft(clientId, values);
+        toast.success(`Entwurf ${offer.offerNumber} gespeichert`);
+        onClose();
+        router.push(`/clients/${clientId}`);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Fehler beim Speichern");
+      }
+    });
+  }
+
   function nextStep() {
     if (step === 1 && watchedPositions.length === 0) {
       toast.error("Mindestens eine Position erforderlich");
@@ -254,7 +279,14 @@ function OfferWizardContent({
             }
           }}
         >
-          {step === 0 && <InquiryStep register={register} errors={errors} />}
+          {step === 0 && (
+            <InquiryStep
+              register={register}
+              errors={errors}
+              control={control}
+              setValue={setValue}
+            />
+          )}
           {step === 1 && (
             <PositionsStep
               catalog={catalog}
@@ -308,6 +340,14 @@ function OfferWizardContent({
             <Button variant="ghost" onClick={onClose} disabled={pending}>
               Abbrechen
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={saveDraft}
+              disabled={pending}
+            >
+              Als Entwurf speichern
+            </Button>
             {step < STEPS.length - 1 ? (
               <Button type="button" onClick={nextStep}>
                 Weiter
@@ -355,72 +395,294 @@ function Stepper({ step }: { step: number }) {
 interface RHF {
   register: ReturnType<typeof useForm<CreateOfferData>>["register"];
   errors: ReturnType<typeof useForm<CreateOfferData>>["formState"]["errors"];
+  control: ReturnType<typeof useForm<CreateOfferData>>["control"];
+  setValue: ReturnType<typeof useForm<CreateOfferData>>["setValue"];
 }
 
-const INQUIRY_FIELDS: { key: keyof CreateOfferData["inquiry"]; label: string; placeholder?: string }[] = [
+const INQUIRY_FIELDS: {
+  key: keyof CreateOfferData["inquiry"];
+  label: string;
+  placeholder?: string;
+  numeric?: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
+  chips?: string[];
+}[] = [
   {
     key: "wohnflaecheM2",
     label: "Beheizte Wohnfläche (m²)",
     placeholder: "z. B. 150",
+    numeric: true,
+    min: 0,
+    step: 1,
   },
   {
     key: "annualKwhGas",
-    label: "Jahresverbrauch (kWh / Öl / m³)",
-    placeholder: "z. B. 25.000 kWh / 2.500 L Öl / 2.800 m³",
+    label: "Jahresverbrauch (kWh / L)",
+    placeholder: "z. B. 25000",
+    numeric: true,
+    min: 0,
+    step: 1,
   },
   {
     key: "wohneinheiten",
     label: "Anzahl Wohneinheiten",
     placeholder: "z. B. 1",
+    numeric: true,
+    min: 1,
+    step: 1,
+  },
+  {
+    key: "constructionYear",
+    label: "Baujahr / Dämmstandard",
+    placeholder: "z. B. 1985 / saniert",
+    chips: [...BAUJAHR_CHIPS],
+  },
+  {
+    key: "householdSize",
+    label: "Personen im Haushalt",
+    placeholder: "z. B. 4",
+    numeric: true,
+    min: 1,
+    step: 1,
   },
   {
     key: "heizsystem",
     label: "Heizsystem",
-    placeholder: "Heizkörper / Fußbodenheizung / Kombination",
+    placeholder: "Eigene Antwort…",
+    chips: ["Heizkörper", "Fußbodenheizung", "Kombination", "Konvektoren"],
   },
   {
     key: "hotWaterIncluded",
     label: "Warmwasser durch Wärmepumpe?",
-    placeholder: "Ja / Nein",
+    placeholder: "Eigene Antwort…",
+    chips: ["Ja", "Nein", "Mit Heizstab"],
   },
   {
     key: "currentHeating",
-    label: "Aktueller Heizungstyp (Hersteller, Modell)",
-    placeholder: "z. B. Vaillant ecoTEC plus VC 246",
+    label: "Aktueller Heizungstyp",
+    placeholder: "Hersteller, Modell…",
+    chips: ["Gasheizung", "Ölheizung", "Holz / Pellet", "Stromheizung", "Fernwärme"],
   },
   {
     key: "heatingAge",
     label: "Alter / Baujahr der Heizung",
-    placeholder: "z. B. 18 Jahre / installiert 2008",
+    placeholder: "z. B. installiert 2008",
+    chips: ["< 10 Jahre", "10–20 Jahre", "20–30 Jahre", "> 30 Jahre"],
   },
   {
     key: "incomeRange",
     label: "Haushaltseinkommen / Jahr",
-    placeholder: "unter 40.000 € / über 40.000 €",
+    placeholder: "Eigene Antwort…",
+    chips: ["unter 40.000 €", "über 40.000 €"],
   },
 ];
 
-function InquiryStep({ register }: RHF) {
+function InquiryStep({ register, control, setValue }: RHF) {
   return (
-    <Card>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Anfragedaten</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {INQUIRY_FIELDS.map((f) => (
+              <div key={f.key} className="space-y-1">
+                <Label className="text-xs">{f.label}</Label>
+                {f.chips ? (
+                  <InquiryChipField
+                    name={`inquiry.${f.key}` as const}
+                    chips={f.chips}
+                    placeholder={f.placeholder}
+                    control={control}
+                    setValue={setValue}
+                    register={register}
+                  />
+                ) : (
+                  <Input
+                    {...register(`inquiry.${f.key}`)}
+                    placeholder={f.placeholder}
+                    type={f.numeric ? "number" : "text"}
+                    inputMode={f.numeric ? "numeric" : undefined}
+                    min={f.min}
+                    max={f.max}
+                    step={f.step}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Zusätzliche Informationen</Label>
+            <Textarea rows={3} {...register("inquiry.additionalInfo")} />
+          </div>
+        </CardContent>
+      </Card>
+      <HeizlastWidget control={control} />
+    </div>
+  );
+}
+
+function HeizlastWidget({
+  control,
+}: {
+  control: ReturnType<typeof useForm<CreateOfferData>>["control"];
+}) {
+  const inquiry = useWatch({ control, name: "inquiry" }) as CreateOfferData["inquiry"];
+  const wohn = Number(inquiry?.wohnflaecheM2) || 0;
+  const verbrauch = Number(inquiry?.annualKwhGas) || 0;
+  const personen = Number(inquiry?.householdSize) || 0;
+  const baujahrRaw = inquiry?.constructionYear?.trim();
+  const baujahr = (BAUJAHR_CHIPS as readonly string[]).includes(baujahrRaw ?? "")
+    ? (baujahrRaw as BaujahrChip)
+    : null;
+
+  const result = calcHeizlast({
+    wohnflaecheM2: wohn,
+    baujahr,
+    jahresverbrauchKwh: verbrauch,
+    personen,
+  });
+
+  const hasAnyData = result.heizlastByArea !== null || result.heizlastByConsumption !== null;
+
+  return (
+    <Card className="border-primary/30 bg-primary/[0.02]">
       <CardHeader>
-        <CardTitle className="text-base">Anfragedaten</CardTitle>
+        <CardTitle className="text-base flex items-center justify-between">
+          <span>Empfehlung (Heizlast-Schätzung)</span>
+          <span className="text-xs font-normal text-muted-foreground">
+            vereinfacht nach BWP / DIN EN 12831-1
+          </span>
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {INQUIRY_FIELDS.map((f) => (
-            <div key={f.key} className="space-y-1">
-              <Label className="text-xs">{f.label}</Label>
-              <Input {...register(`inquiry.${f.key}`)} placeholder={f.placeholder} />
-            </div>
-          ))}
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Zusätzliche Informationen</Label>
-          <Textarea rows={3} {...register("inquiry.additionalInfo")} />
-        </div>
+      <CardContent>
+        {!hasAnyData ? (
+          <p className="text-sm text-muted-foreground">
+            Wohnfläche &amp; Baujahr oder Jahresverbrauch eingeben für die
+            Empfehlung.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Metric
+              label="Heizlast Gebäude"
+              value={`${result.heizlastKw} kW`}
+              sub={[
+                result.heizlastByArea !== null
+                  ? `Fläche: ${result.heizlastByArea} kW`
+                  : null,
+                result.heizlastByConsumption !== null
+                  ? `Verbrauch: ${result.heizlastByConsumption} kW`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            />
+            <Metric
+              label="Warmwasser"
+              value={`${result.tww} kW`}
+              sub={personen ? `${personen} Personen` : "Personenzahl angeben"}
+            />
+            <Metric
+              label="Empfohlene WP"
+              value={`${result.empfohleneWpKw} kW`}
+              highlight
+            />
+            <Metric
+              label="Speicher"
+              value={`${result.pufferLiter} L Puffer`}
+              sub={`+ ${result.wwLiter} L WW`}
+            />
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground mt-3">
+          Hinweis: Vereinfachte Schätzung — kein Ersatz für die ausführliche
+          Heizlastberechnung nach DIN EN 12831-1.
+        </p>
       </CardContent>
     </Card>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  sub,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  sub?: string | null;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-md p-3 ${
+        highlight ? "bg-primary/10 border border-primary/30" : "bg-muted/40"
+      }`}
+    >
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-lg font-semibold ${highlight ? "text-primary" : ""}`}>
+        {value}
+      </div>
+      {sub && (
+        <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>
+      )}
+    </div>
+  );
+}
+
+function InquiryChipField({
+  name,
+  chips,
+  placeholder,
+  control,
+  setValue,
+  register,
+}: {
+  name: `inquiry.${keyof CreateOfferData["inquiry"]}`;
+  chips: string[];
+  placeholder?: string;
+  control: ReturnType<typeof useForm<CreateOfferData>>["control"];
+  setValue: ReturnType<typeof useForm<CreateOfferData>>["setValue"];
+  register: ReturnType<typeof useForm<CreateOfferData>>["register"];
+}) {
+  const current = (useWatch({ control, name }) as string | null | undefined) ?? "";
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-1">
+        {chips.map((chip) => {
+          const active = current === chip;
+          return (
+            <button
+              key={chip}
+              type="button"
+              onClick={() =>
+                setValue(name, active ? "" : chip, {
+                  shouldDirty: true,
+                  shouldTouch: true,
+                })
+              }
+              className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                active
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background hover:bg-muted border-border text-foreground"
+              }`}
+            >
+              {chip}
+            </button>
+          );
+        })}
+      </div>
+      <Input
+        {...register(name)}
+        placeholder={placeholder}
+        className="h-8 text-sm"
+      />
+    </div>
   );
 }
 
@@ -450,6 +712,39 @@ function PositionsStep({
   const selectedItem = catalog.find((c) => c.id === selectedItemId);
   const selectedVariant = selectedItem?.variants.find((v) => v.id === selectedVariantId);
 
+  function applyTemplate(templateId: string) {
+    const tpl = OFFER_TEMPLATES.find((t) => t.id === templateId);
+    if (!tpl) return;
+    const { matches, missing } = resolveTemplate(tpl, catalog);
+    if (matches.length === 0) {
+      toast.error("Keine passenden Positionen im Katalog gefunden");
+      return;
+    }
+    matches.forEach((m, idx) => {
+      append({
+        catalogItemVariantId: m.variant.id,
+        name: m.variant.name,
+        description: m.variant.description ?? "",
+        itemType: m.catalogItem.type,
+        manufacturer: m.catalogItem.manufacturer ?? "",
+        photoStoragePath: m.variant.photoStoragePath ?? null,
+        technicalData: Array.isArray(m.variant.technicalData)
+          ? (m.variant.technicalData as { key: string; value: string }[])
+          : [],
+        unitPrice: m.variant.price,
+        quantity: m.quantity,
+        order: fields.length + idx,
+      });
+    });
+    if (missing.length > 0) {
+      toast.warning(
+        `Hinzugefügt: ${matches.length} · fehlt: ${missing.map((m) => m.label).join(", ")}`,
+      );
+    } else {
+      toast.success(`Vorlage "${tpl.label}" angewendet`);
+    }
+  }
+
   function addFromCatalog() {
     if (!selectedItem || !selectedVariant) {
       toast.error("Position und Variante wählen");
@@ -476,6 +771,32 @@ function PositionsStep({
 
   return (
     <div className="space-y-4">
+      <Card className="border-primary/30 bg-primary/[0.02]">
+        <CardHeader>
+          <CardTitle className="text-base">Schnellauswahl (Vorlagen)</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Vorgefertigte Konfigurationen für typische Häuser — spart Zeit am Telefon.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {OFFER_TEMPLATES.map((tpl) => (
+              <button
+                key={tpl.id}
+                type="button"
+                onClick={() => applyTemplate(tpl.id)}
+                className="text-left rounded-md border bg-card p-3 hover:bg-muted/40 transition-colors"
+              >
+                <div className="font-medium text-sm">{tpl.label}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {tpl.description}
+                </div>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Aus Katalog</CardTitle>

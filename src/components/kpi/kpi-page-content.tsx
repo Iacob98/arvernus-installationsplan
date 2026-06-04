@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -21,6 +22,12 @@ import {
   CheckCircle2,
   Trophy,
   TrendingUp,
+  Timer,
+  Flame,
+  Sparkles,
+  Snowflake,
+  PiggyBank,
+  GitMerge,
 } from "lucide-react";
 
 const PERIOD_LABELS: Record<KpiPeriod, string> = {
@@ -65,11 +72,7 @@ export function KpiPageContent({ data }: { data: KpiResult }) {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <TotalCard
-          icon={Phone}
-          label="Anrufe"
-          value={data.totals.callsTotal}
-        />
+        <TotalCard icon={Phone} label="Anrufe" value={data.totals.callsTotal} />
         <TotalCard
           icon={PhoneCall}
           label="Erreicht"
@@ -99,6 +102,61 @@ export function KpiPageContent({ data }: { data: KpiResult }) {
           icon={TrendingUp}
           label="Konversion"
           value={`${data.totals.conversionPct} %`}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <TotalCard
+          icon={Timer}
+          label="Ø Time-to-first-call"
+          value={
+            data.totals.avgFirstCallHours === null
+              ? "—"
+              : `${data.totals.avgFirstCallHours} h`
+          }
+          sub="Ziel < 4 h"
+        />
+        <TotalCard
+          icon={GitMerge}
+          label="Lead → Quote"
+          value={`${data.totals.leadToQuotePct} %`}
+          sub="Benchmark 40–55 %"
+        />
+        <TotalCard
+          icon={Trophy}
+          label="Quote → Close"
+          value={`${data.totals.quoteToClosePct} %`}
+          sub="Benchmark 25–35 %"
+        />
+        <TotalCard
+          icon={PiggyBank}
+          label="Förderung-Anteil"
+          value={`${data.totals.foerderungAnteilPct} %`}
+          sub="KfW aktiv"
+        />
+        <TotalCard
+          icon={Flame}
+          label="Hot Leads"
+          value={data.totals.hotLeads}
+          sub={
+            <>
+              <Sparkles className="inline h-3 w-3 mx-1 text-amber-500" />
+              {data.totals.warmLeads} warm{" "}
+              <Snowflake className="inline h-3 w-3 mx-1 text-sky-500" />
+              {data.totals.coldLeads} cold
+            </>
+          }
+        />
+        <TotalCard
+          icon={Phone}
+          label="Ø Anrufe/Kunde"
+          value={
+            data.totals.clientsCalled > 0
+              ? Math.round(
+                  (data.totals.callsTotal / data.totals.clientsCalled) * 10,
+                ) / 10
+              : "—"
+          }
         />
       </div>
 
@@ -179,7 +237,7 @@ function TotalCard({
   icon: typeof Phone;
   label: string;
   value: number | string;
-  sub?: string;
+  sub?: React.ReactNode;
 }) {
   return (
     <Card>

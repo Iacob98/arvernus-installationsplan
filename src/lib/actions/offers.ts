@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth-utils";
 import {
   createOfferSchema,
+  draftOfferSchema,
   sendOfferSchema,
   CreateOfferData,
   SendOfferData,
@@ -97,6 +98,8 @@ export async function createOffer(clientId: string, data: CreateOfferData) {
         wohnflaecheM2: validated.inquiry.wohnflaecheM2 ?? null,
         annualKwhGas: validated.inquiry.annualKwhGas ?? null,
         wohneinheiten: validated.inquiry.wohneinheiten ?? null,
+        constructionYear: validated.inquiry.constructionYear ?? null,
+        householdSize: validated.inquiry.householdSize ?? null,
         heizsystem: validated.inquiry.heizsystem ?? null,
         hotWaterIncluded: validated.inquiry.hotWaterIncluded ?? null,
         currentHeating: validated.inquiry.currentHeating ?? null,
@@ -151,6 +154,74 @@ export async function createOffer(clientId: string, data: CreateOfferData) {
 
   revalidatePath(`/clients/${clientId}`);
   revalidatePath(`/clients/${clientId}/offers/${offer.id}`);
+  return offer;
+}
+
+export async function saveOfferDraft(clientId: string, data: CreateOfferData) {
+  const session = await requireAuth();
+  const validated = draftOfferSchema.parse(data);
+
+  const client = await db.client.findUnique({ where: { id: clientId } });
+  if (!client) throw new Error("Kunde nicht gefunden");
+
+  const offerNumber = await generateOfferNumber();
+
+  const offer = await db.$transaction(async (tx) => {
+    await tx.client.update({
+      where: { id: clientId },
+      data: {
+        wohnflaecheM2: validated.inquiry.wohnflaecheM2 ?? null,
+        annualKwhGas: validated.inquiry.annualKwhGas ?? null,
+        wohneinheiten: validated.inquiry.wohneinheiten ?? null,
+        constructionYear: validated.inquiry.constructionYear ?? null,
+        householdSize: validated.inquiry.householdSize ?? null,
+        heizsystem: validated.inquiry.heizsystem ?? null,
+        hotWaterIncluded: validated.inquiry.hotWaterIncluded ?? null,
+        currentHeating: validated.inquiry.currentHeating ?? null,
+        heatingAge: validated.inquiry.heatingAge ?? null,
+        incomeRange: validated.inquiry.incomeRange ?? null,
+        additionalInfo: validated.inquiry.additionalInfo ?? null,
+      },
+    });
+    return tx.offer.create({
+      data: {
+        offerNumber,
+        title: validated.title,
+        status: "DRAFT",
+        validUntilDays: validated.validUntilDays,
+        heatBalance: validated.heatBalance,
+        serviceItems: validated.serviceItems,
+        kfwFoerderung: validated.kfwFoerderung,
+        clientId,
+        createdById: session.user.id,
+        positions: {
+          create: validated.positions.map((p, idx) => ({
+            catalogItemVariantId: p.catalogItemVariantId ?? null,
+            name: p.name,
+            description: p.description ?? null,
+            itemType: p.itemType,
+            manufacturer: p.manufacturer ?? null,
+            photoStoragePath: p.photoStoragePath ?? null,
+            technicalData: p.technicalData,
+            unitPrice: p.unitPrice,
+            quantity: p.quantity,
+            order: p.order || idx,
+          })),
+        },
+        discounts: {
+          create: validated.discounts.map((d, idx) => ({
+            label: d.label,
+            description: d.description ?? null,
+            kind: d.kind,
+            value: d.value,
+            order: d.order || idx,
+          })),
+        },
+      },
+    });
+  });
+
+  revalidatePath(`/clients/${clientId}`);
   return offer;
 }
 

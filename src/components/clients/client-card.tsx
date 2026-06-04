@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { startOfDay } from "date-fns";
-import { Bell } from "lucide-react";
+import { Bell, Flame } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ClientStatus, ClientSubstatus, DealProbability } from "@prisma/client";
+import { calcLeadScore } from "@/lib/lead-scoring";
 
 interface ClientCardProps {
   client: {
@@ -26,6 +27,14 @@ interface ClientCardProps {
     _count: { projects: number };
     reminders: { id: string; date: Date; completed: boolean }[];
     assignedTo?: { name: string } | null;
+    ownership?: string | null;
+    constructionYear?: string | null;
+    buildingType?: string | null;
+    heatingAge?: string | null;
+    annualKwhGas?: string | null;
+    annualLitersOil?: string | null;
+    wohnflaecheM2?: string | null;
+    incomeRange?: string | null;
   };
 }
 
@@ -63,6 +72,33 @@ export function ClientCard({ client }: ClientCardProps) {
     (r) => startOfDay(r.date).getTime() === today.getTime()
   );
 
+  const lead = calcLeadScore({
+    ownership: client.ownership,
+    constructionYear: client.constructionYear,
+    buildingType: client.buildingType,
+    heatingAge: client.heatingAge,
+    annualKwhGas: client.annualKwhGas,
+    annualLitersOil: client.annualLitersOil,
+    wohnflaecheM2: client.wohnflaecheM2,
+    incomeRange: client.incomeRange,
+  });
+
+  const leadBadge =
+    lead.tier === "hot"
+      ? {
+          icon: <Flame className="h-3 w-3 mr-1" />,
+          label: `Hot ${lead.score}`,
+          className: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+        }
+      : lead.tier === "warm"
+        ? {
+            icon: null,
+            label: `Warm ${lead.score}`,
+            className:
+              "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+          }
+        : null;
+
   const accentClass = hasOverdue
     ? "border-l-4 border-l-red-500 bg-red-50/40 dark:bg-red-950/20"
     : hasTodayReminder
@@ -80,6 +116,12 @@ export function ClientCard({ client }: ClientCardProps) {
               <p className="font-medium truncate">
                 {client.salutation} {client.firstName} {client.lastName}
               </p>
+              {leadBadge && (
+                <Badge className={`text-[10px] px-1.5 py-0 ${leadBadge.className}`} title={lead.reasons.map((r) => r.text).join(" · ")}>
+                  {leadBadge.icon}
+                  {leadBadge.label}
+                </Badge>
+              )}
               {hasOverdue && (
                 <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
                   <Bell className="h-3 w-3 mr-1" />

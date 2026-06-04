@@ -454,6 +454,8 @@ export function ClientDetailContent({ client, users, isAdmin, catalog }: ClientD
           wohnflaecheM2: client.wohnflaecheM2,
           annualKwhGas: client.annualKwhGas,
           wohneinheiten: client.wohneinheiten,
+          constructionYear: client.constructionYear,
+          householdSize: client.householdSize,
           heizsystem: client.heizsystem,
           hotWaterIncluded: client.hotWaterIncluded,
           currentHeating: client.currentHeating,
