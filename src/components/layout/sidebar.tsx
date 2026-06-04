@@ -13,6 +13,7 @@ import {
   Megaphone,
   Settings,
   Menu,
+  Package,
 } from "lucide-react";
 import {
   Sheet,
@@ -37,6 +38,7 @@ function getNavItems(role?: string): NavItem[] {
     { href: "/clients", label: "Kunden", icon: Users },
     { href: "/users", label: "Benutzer", icon: UserCog },
     { href: "/campaigns", label: "Kampagnen", icon: Megaphone },
+    { href: "/settings/catalog", label: "Katalog", icon: Package },
     { href: "/settings", label: "Einstellungen", icon: Settings },
   ];
 }
@@ -49,7 +51,10 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="flex-1 p-4 space-y-1">
       {navItems.map((item) => {
-        const isActive = pathname.startsWith(item.href);
+        const isActive =
+          item.href === "/settings"
+            ? pathname === "/settings"
+            : pathname.startsWith(item.href);
         return (
           <Link
             key={item.href}

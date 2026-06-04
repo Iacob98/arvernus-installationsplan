@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClient } from "@/lib/actions/clients";
 import { getActiveUsers } from "@/lib/actions/users";
+import { listActiveCatalogItems, type CatalogItemForClient } from "@/lib/actions/catalog";
+import { serializeDecimals } from "@/lib/serialize";
 import { auth } from "@/lib/auth";
 import { isAdmin } from "@/lib/auth-utils";
 import { Button } from "@/components/ui/button";
@@ -21,7 +23,11 @@ export default async function ClientDetailPage({
 
   const session = await auth();
   const admin = session ? isAdmin(session) : false;
-  const users = admin ? await getActiveUsers() : [];
+  const [users, catalogRaw] = await Promise.all([
+    admin ? getActiveUsers() : Promise.resolve([] as { id: string; name: string }[]),
+    listActiveCatalogItems(),
+  ]);
+  const catalog: CatalogItemForClient[] = serializeDecimals(catalogRaw);
 
   return (
     <div className="space-y-6">
@@ -46,7 +52,12 @@ export default async function ClientDetailPage({
         </Link>
       </div>
 
-      <ClientDetailContent client={client} users={users} isAdmin={admin} />
+      <ClientDetailContent
+        client={client}
+        users={users}
+        isAdmin={admin}
+        catalog={catalog}
+      />
     </div>
   );
 }

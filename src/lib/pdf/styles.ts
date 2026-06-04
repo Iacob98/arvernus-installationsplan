@@ -601,5 +601,393 @@ export function getPdfStyles(primaryColor: string, secondaryColor: string): stri
     .bullet-list li strong {
       color: #333;
     }
+
+    /* ===== OFFER (Angebot) ===== */
+
+    /* Cover is a stand-alone A4 page generated separately (no header/footer). */
+    .offer-cover-page {
+      position: relative;
+      width: 210mm;
+      height: 296mm;
+      overflow: hidden;
+      background: #fff;
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      page-break-after: avoid;
+    }
+
+    .offer-cover-shape-top {
+      position: absolute;
+      top: -40mm;
+      right: -40mm;
+      width: 130mm;
+      height: 130mm;
+      background: ${primaryColor};
+      border-radius: 50% 0 0 50%;
+      opacity: 0.92;
+    }
+
+    .offer-cover-shape-mid {
+      position: absolute;
+      top: 80mm;
+      right: -25mm;
+      width: 90mm;
+      height: 170mm;
+      background: ${primaryColor};
+      border-radius: 50% 0 0 50%;
+      opacity: 0.78;
+    }
+
+    .offer-cover-shape-bottom {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 85mm;
+      background: ${primaryColor};
+      clip-path: ellipse(125% 90% at 0% 100%);
+    }
+
+    .offer-cover-logo {
+      position: absolute;
+      top: 18mm;
+      left: 18mm;
+      z-index: 2;
+    }
+
+    .offer-cover-logo img {
+      height: 22mm;
+    }
+
+    .offer-cover-manager {
+      position: absolute;
+      top: 18mm;
+      right: 18mm;
+      z-index: 3;
+      background: ${primaryColor};
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 16px 16px 0 16px;
+      font-size: 9pt;
+      line-height: 1.4;
+      max-width: 80mm;
+    }
+
+    .offer-cover-manager strong {
+      display: block;
+      font-size: 11pt;
+      margin-bottom: 3px;
+    }
+
+    .offer-cover-title {
+      position: absolute;
+      top: 70mm;
+      left: 18mm;
+      right: 18mm;
+      z-index: 2;
+      font-size: 28pt;
+      font-weight: 700;
+      color: #111;
+      max-width: 130mm;
+    }
+
+    .offer-cover-title-line {
+      position: absolute;
+      top: 95mm;
+      left: 18mm;
+      z-index: 2;
+      width: 130mm;
+      height: 2px;
+      background: #ddd;
+    }
+
+    .offer-cover-subtitle {
+      position: absolute;
+      top: 100mm;
+      left: 18mm;
+      z-index: 2;
+      font-size: 12pt;
+      color: #555;
+    }
+
+    .offer-cover-client {
+      position: absolute;
+      bottom: 18mm;
+      right: 18mm;
+      z-index: 3;
+      color: #fff;
+      text-align: right;
+      font-size: 9pt;
+      line-height: 1.5;
+    }
+
+    .offer-cover-client strong {
+      display: block;
+      font-size: 11pt;
+      margin-bottom: 3px;
+    }
+
+    /* Generic offer page wrap */
+    .offer-page {
+      page-break-after: always;
+    }
+
+    .offer-page:last-child {
+      page-break-after: avoid;
+    }
+
+    .offer-page-date {
+      text-align: right;
+      font-size: 9pt;
+      color: #777;
+      margin-bottom: 8px;
+    }
+
+    .offer-page-heading {
+      font-size: 18pt;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 4px;
+    }
+
+    .offer-page-sub {
+      font-size: 9.5pt;
+      color: #666;
+      margin-bottom: 18px;
+    }
+
+    .offer-section-label {
+      font-size: 10pt;
+      font-weight: 600;
+      color: ${primaryColor};
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin: 14px 0 10px;
+    }
+
+    .offer-position {
+      border-top: 1px solid #eee;
+      padding: 14px 0;
+      page-break-inside: avoid;
+    }
+
+    .offer-position-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 6px;
+    }
+
+    .offer-position-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: ${primaryColor};
+      color: #fff;
+      font-size: 9pt;
+      font-weight: 700;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+
+    .offer-position-title {
+      font-size: 12pt;
+      font-weight: 600;
+      color: #111;
+      flex: 1;
+    }
+
+    .offer-position-qty {
+      font-size: 9.5pt;
+      color: #555;
+      white-space: nowrap;
+    }
+
+    .offer-position-manufacturer {
+      font-size: 9pt;
+      color: #777;
+      margin-left: 30px;
+      margin-bottom: 6px;
+    }
+
+    .offer-position-body {
+      display: flex;
+      gap: 16px;
+      margin-left: 30px;
+    }
+
+    .offer-position-text {
+      flex: 1;
+      font-size: 9.5pt;
+      color: #444;
+      line-height: 1.55;
+    }
+
+    .offer-position-text p {
+      margin-bottom: 6px;
+    }
+
+    .offer-position-photo {
+      width: 60mm;
+      max-height: 55mm;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .offer-tech-list {
+      list-style: none;
+      margin: 6px 0 0;
+      padding: 0;
+    }
+
+    .offer-tech-list li {
+      font-size: 9pt;
+      color: #555;
+      padding: 2px 0;
+    }
+
+    .offer-tech-list li strong {
+      color: #333;
+    }
+
+    .offer-summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 9.5pt;
+    }
+
+    .offer-summary-table th {
+      text-align: left;
+      color: #888;
+      text-transform: uppercase;
+      font-size: 8.5pt;
+      letter-spacing: 0.06em;
+      padding: 8px 6px;
+      border-bottom: 1px solid #ddd;
+      font-weight: 600;
+    }
+
+    .offer-summary-table th.num,
+    .offer-summary-table td.num {
+      text-align: right;
+    }
+
+    .offer-summary-table td {
+      padding: 10px 6px;
+      border-bottom: 1px solid #eee;
+      vertical-align: top;
+      color: #333;
+    }
+
+    .offer-totals {
+      margin-top: 14px;
+      width: 100%;
+      font-size: 10pt;
+    }
+
+    .offer-totals .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 6px;
+    }
+
+    .offer-totals .row.label {
+      color: #555;
+    }
+
+    .offer-totals .row.discount {
+      color: ${secondaryColor};
+    }
+
+    .offer-totals .row.total {
+      border-top: 1px solid #333;
+      padding-top: 12px;
+      margin-top: 6px;
+      font-weight: 700;
+      font-size: 12pt;
+      color: #111;
+    }
+
+    .offer-foerderung-note {
+      margin-top: 18px;
+    }
+
+    .offer-foerderung-note .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 6px;
+      color: #333;
+      font-size: 10pt;
+    }
+
+    .offer-foerderung-note .star {
+      font-size: 8pt;
+      color: #777;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+
+    .offer-agb-block {
+      font-size: 9.5pt;
+      line-height: 1.55;
+      color: #333;
+    }
+
+    .offer-agb-block h3 {
+      font-size: 11pt;
+      color: #111;
+      margin: 14px 0 6px;
+    }
+
+    .offer-agb-block p,
+    .offer-agb-block ul {
+      margin-bottom: 8px;
+    }
+
+    .offer-agb-block ul {
+      padding-left: 18px;
+    }
+
+    .offer-sign-line {
+      border-top: 1px solid #333;
+      width: 100mm;
+      margin-top: 30mm;
+      padding-top: 8px;
+      font-size: 9pt;
+      color: #555;
+    }
+
+    .offer-foerderung-card {
+      float: right;
+      width: 65mm;
+      margin: 0 0 12px 12px;
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .offer-foerderung-card .label {
+      font-size: 8pt;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .offer-foerderung-card .percent {
+      font-size: 22pt;
+      font-weight: 700;
+      color: ${primaryColor};
+      margin: 6px 0;
+    }
+
+    .offer-foerderung-card .amount {
+      font-size: 11pt;
+      color: #333;
+    }
   `;
 }

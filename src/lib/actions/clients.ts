@@ -113,6 +113,16 @@ const clientDetailInclude = {
     orderBy: { createdAt: "desc" as const },
     include: { uploadedBy: { select: { name: true } } },
   },
+  offers: {
+    orderBy: { createdAt: "desc" as const },
+    take: 20,
+    include: { createdBy: { select: { name: true } } },
+  },
+  callLogs: {
+    orderBy: { calledAt: "desc" as const },
+    take: 30,
+    include: { user: { select: { name: true } } },
+  },
   assignedTo: { select: { id: true, name: true } },
 } satisfies Prisma.ClientInclude;
 
@@ -237,6 +247,44 @@ export async function bulkAssignClients(clientIds: string[], userId: string | nu
   });
 
   revalidatePath("/clients");
+}
+
+const inquiryFieldKeys = [
+  "ownership",
+  "buildingType",
+  "constructionYear",
+  "householdSize",
+  "currentHeating",
+  "currentFuel",
+  "heatingAge",
+  "hotWaterIncluded",
+  "timeframe",
+  "availability",
+  "annualKwhGas",
+  "annualLitersOil",
+  "additionalInfo",
+  "wohnflaecheM2",
+  "wohneinheiten",
+  "heizsystem",
+  "incomeRange",
+] as const;
+
+type InquiryPatch = Partial<Record<(typeof inquiryFieldKeys)[number], string | null>>;
+
+export async function updateClientInquiry(clientId: string, data: InquiryPatch) {
+  await requireAuth();
+
+  const patch: Record<string, string | null> = {};
+  for (const key of inquiryFieldKeys) {
+    if (key in data) {
+      const v = data[key];
+      patch[key] = v && v.trim().length > 0 ? v.trim() : null;
+    }
+  }
+  if (Object.keys(patch).length === 0) return;
+
+  await db.client.update({ where: { id: clientId }, data: patch });
+  revalidatePath(`/clients/${clientId}`);
 }
 
 export async function createClientNote(clientId: string, content: string) {

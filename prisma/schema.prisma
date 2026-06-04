@@ -80,31 +80,63 @@ enum CampaignStatus {
   COMPLETED
 }
 
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String
-  passwordHash  String
-  role          Role      @default(TECHNICIAN)
-  active        Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+enum CallOutcome {
+  REACHED
+  NOT_REACHED
+  VOICEMAIL
+  BUSY
+}
 
-  projects           Project[]
-  documents          Document[]
-  auditLogs          AuditLog[]
-  emailLogs          EmailLog[]
-  campaigns          Campaign[]
-  assignedClients    Client[]            @relation("AssignedClients")
-  clientNotes        ClientNote[]        @relation("ClientNotes")
-  clientAttachments  ClientAttachment[]  @relation("UploadedClientAttachments")
+enum CatalogItemType {
+  WAERMEPUMPE
+  INNENGERAET
+  HEIZUNGSSPEICHER
+  WARMWASSERSPEICHER
+  ANDERE
+}
+
+enum OfferStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum OfferDiscountKind {
+  PERCENT
+  AMOUNT
+  FOERDERUNG
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(TECHNICIAN)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  projects          Project[]
+  documents         Document[]
+  auditLogs         AuditLog[]
+  emailLogs         EmailLog[]
+  campaigns         Campaign[]
+  assignedClients   Client[]           @relation("AssignedClients")
+  clientNotes       ClientNote[]       @relation("ClientNotes")
+  clientAttachments ClientAttachment[] @relation("UploadedClientAttachments")
+  offers            Offer[]            @relation("CreatedOffers")
+  callLogs          CallLog[]
 
   @@map("users")
 }
 
 model Client {
-  id              String            @id @default(cuid())
-  customerNumber  String            @unique
+  id              String           @id @default(cuid())
+  customerNumber  String           @unique
   salutation      String?
   firstName       String
   lastName        String
@@ -115,64 +147,70 @@ model Client {
   postalCode      String
   city            String
   notes           String?
-  status          ClientStatus      @default(NEU)
+  status          ClientStatus     @default(NEU)
   substatus       ClientSubstatus?
   dealProbability DealProbability?
   source          String?
-  unsubscribed    Boolean           @default(false)
+  unsubscribed    Boolean          @default(false)
 
-  ownership          String?
-  buildingType       String?
-  constructionYear   String?
-  householdSize      String?
-  currentHeating     String?
-  currentFuel        String?
-  heatingAge         String?
-  hotWaterIncluded   String?
-  timeframe          String?
-  availability       String?
-  annualKwhGas       String?
-  annualLitersOil    String?
-  additionalInfo     String?
+  ownership        String?
+  buildingType     String?
+  constructionYear String?
+  householdSize    String?
+  currentHeating   String?
+  currentFuel      String?
+  heatingAge       String?
+  hotWaterIncluded String?
+  timeframe        String?
+  availability     String?
+  annualKwhGas     String?
+  annualLitersOil  String?
+  additionalInfo   String?
+  wohnflaecheM2    String?
+  wohneinheiten    String?
+  heizsystem       String?
+  incomeRange      String?
 
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  assignedToId    String?
-  assignedTo      User?             @relation("AssignedClients", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedClients", fields: [assignedToId], references: [id], onDelete: SetNull)
 
-  projects        Project[]
-  reminders       Reminder[]
-  emailLogs       EmailLog[]
-  clientNotes     ClientNote[]
-  attachments     ClientAttachment[]
+  projects    Project[]
+  reminders   Reminder[]
+  emailLogs   EmailLog[]
+  clientNotes ClientNote[]
+  attachments ClientAttachment[]
+  offers      Offer[]
+  callLogs    CallLog[]
 
   @@map("clients")
 }
 
 model Project {
-  id              String         @id @default(cuid())
-  projectNumber   String         @unique
-  title           String
-  status          ProjectStatus  @default(DRAFT)
+  id            String        @id @default(cuid())
+  projectNumber String        @unique
+  title         String
+  status        ProjectStatus @default(DRAFT)
 
-  street          String
-  houseNumber     String
-  postalCode      String
-  city            String
+  street      String
+  houseNumber String
+  postalCode  String
+  city        String
 
   installationDate DateTime?
   completionDate   DateTime?
   notes            String?
 
-  clientId        String
-  client          Client         @relation(fields: [clientId], references: [id])
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id])
 
-  createdById     String
-  createdBy       User           @relation(fields: [createdById], references: [id])
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
 
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   sections        ProjectSection[]
   documents       Document[]
@@ -182,26 +220,26 @@ model Project {
 }
 
 model ProjectSection {
-  id          String      @id @default(cuid())
-  type        SectionType
-  order       Int
-  data        Json        @default("{}")
-  completed   Boolean     @default(false)
+  id        String      @id @default(cuid())
+  type      SectionType
+  order     Int
+  data      Json        @default("{}")
+  completed Boolean     @default(false)
 
-  projectId   String
-  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  photos      Photo[]
+  photos Photo[]
 
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([projectId, type])
   @@map("project_sections")
 }
 
 model Photo {
-  id            String    @id @default(cuid())
+  id            String  @id @default(cuid())
   fileName      String
   storagePath   String
   thumbnailPath String?
@@ -209,24 +247,24 @@ model Photo {
   size          Int
   width         Int?
   height        Int?
-  annotations   Json      @default("[]")
+  annotations   Json    @default("[]")
   caption       String?
-  order         Int       @default(0)
+  order         Int     @default(0)
 
-  sectionId     String
-  section       ProjectSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  sectionId String
+  section   ProjectSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
 
   heatingCircuitItemId String?
   heatingCircuitItem   HeatingCircuitItem? @relation(fields: [heatingCircuitItemId], references: [id])
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("photos")
 }
 
 model HeatingCircuitItem {
-  id           String    @id @default(cuid())
+  id           String  @id @default(cuid())
   number       Int
   floor        String
   room         String
@@ -235,13 +273,13 @@ model HeatingCircuitItem {
   power        Float?
   notes        String?
 
-  projectId    String
-  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  photos       Photo[]
+  photos Photo[]
 
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("heating_circuit_items")
 }
@@ -255,14 +293,14 @@ model Document {
   status       DocumentStatus @default(PENDING)
   errorMessage String?
 
-  projectId    String
-  project      Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   generatedById String
-  generatedBy   User          @relation(fields: [generatedById], references: [id])
+  generatedBy   User   @relation(fields: [generatedById], references: [id])
 
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("documents")
 }
@@ -276,8 +314,8 @@ model PdfTemplate {
   sectionConfig Json    @default("[]")
   isDefault     Boolean @default(false)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("pdf_templates")
 }
@@ -294,22 +332,23 @@ model CompanySettings {
   logoPath       String?
   primaryColor   String  @default("#1a1a2e")
   secondaryColor String  @default("#e94560")
+  aboutText      String?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("company_settings")
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  action    String
-  entity    String
-  entityId  String
-  details   Json     @default("{}")
+  id       String @id @default(cuid())
+  action   String
+  entity   String
+  entityId String
+  details  Json   @default("{}")
 
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -324,15 +363,40 @@ model Reminder {
   description String
   completed   Boolean  @default(false)
 
-  clientId    String
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  callLogs CallLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([clientId])
   @@index([date])
   @@map("reminders")
+}
+
+model CallLog {
+  id         String      @id @default(cuid())
+  calledAt   DateTime
+  outcome    CallOutcome
+  notes      String?
+  nextCallAt DateTime?
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  reminderId String?
+  reminder   Reminder? @relation(fields: [reminderId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+  @@index([calledAt])
+  @@map("call_logs")
 }
 
 model EmailLog {
@@ -342,17 +406,17 @@ model EmailLog {
   recipients String[]
   status     EmailStatus @default(PENDING)
 
-  clientId   String?
-  client     Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
-  sentById   String
-  sentBy     User        @relation(fields: [sentById], references: [id])
+  sentById String
+  sentBy   User   @relation(fields: [sentById], references: [id])
 
   campaignId String?
-  campaign   Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([clientId])
   @@index([campaignId])
@@ -360,29 +424,29 @@ model EmailLog {
 }
 
 model ImapProcessedEmail {
-  id          String   @id @default(cuid())
-  messageId   String   @unique
+  id          String  @id @default(cuid())
+  messageId   String  @unique
   subject     String?
   fromAddress String?
 
-  clientId    String?
+  clientId String?
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@map("imap_processed_emails")
 }
 
 model EmailTemplate {
-  id          String   @id @default(cuid())
+  id          String @id @default(cuid())
   name        String
   subject     String
   htmlContent String
   htmlCid     String
 
-  images      EmailTemplateImage[]
-  campaigns   Campaign[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  images    EmailTemplateImage[]
+  campaigns Campaign[]
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
 
   @@map("email_templates")
 }
@@ -394,10 +458,10 @@ model EmailTemplateImage {
   cid         String
   mimeType    String
 
-  templateId  String
-  template    EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId String
+  template   EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@map("email_template_images")
 }
@@ -410,15 +474,15 @@ model Campaign {
   sentCount      Int            @default(0)
   failedCount    Int            @default(0)
 
-  templateId     String
-  template       EmailTemplate  @relation(fields: [templateId], references: [id])
+  templateId String
+  template   EmailTemplate @relation(fields: [templateId], references: [id])
 
-  createdById    String
-  createdBy      User           @relation(fields: [createdById], references: [id])
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
 
-  emailLogs      EmailLog[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  emailLogs EmailLog[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@map("campaigns")
 }
@@ -437,20 +501,130 @@ model ClientNote {
 }
 
 model ClientAttachment {
-  id           String   @id @default(cuid())
-  fileName     String
-  storagePath  String
-  mimeType     String
-  size         Int
+  id          String @id @default(cuid())
+  fileName    String
+  storagePath String
+  mimeType    String
+  size        Int
 
-  clientId     String
-  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   uploadedById String
-  uploadedBy   User     @relation("UploadedClientAttachments", fields: [uploadedById], references: [id])
+  uploadedBy   User   @relation("UploadedClientAttachments", fields: [uploadedById], references: [id])
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([clientId])
   @@map("client_attachments")
+}
+
+model CatalogItem {
+  id           String          @id @default(cuid())
+  name         String
+  description  String?
+  type         CatalogItemType
+  manufacturer String?
+  active       Boolean         @default(true)
+  order        Int             @default(0)
+
+  variants CatalogItemVariant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@map("catalog_items")
+}
+
+model CatalogItemVariant {
+  id               String  @id @default(cuid())
+  name             String
+  description      String?
+  photoStoragePath String?
+  price            Decimal @db.Decimal(10, 2)
+  technicalData    Json    @default("[]")
+  active           Boolean @default(true)
+  order            Int     @default(0)
+
+  catalogItemId String
+  catalogItem   CatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([catalogItemId])
+  @@map("catalog_item_variants")
+}
+
+model Offer {
+  id             String      @id @default(cuid())
+  offerNumber    String      @unique
+  title          String      @default("Ihr Individuelles Angebot")
+  status         OfferStatus @default(DRAFT)
+  validUntilDays Int         @default(28)
+
+  pdfStoragePath String?
+  pdfFileName    String?
+
+  emailSubject String?
+  emailBody    String?
+  heatBalance  Json?
+  serviceItems Json?
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation("CreatedOffers", fields: [createdById], references: [id])
+
+  positions OfferPosition[]
+  discounts OfferDiscount[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  sentAt    DateTime?
+
+  @@index([clientId])
+  @@index([status])
+  @@map("offers")
+}
+
+model OfferPosition {
+  id                   String          @id @default(cuid())
+  catalogItemVariantId String?
+  name                 String
+  description          String?
+  itemType             CatalogItemType
+  manufacturer         String?
+  photoStoragePath     String?
+  technicalData        Json            @default("[]")
+  unitPrice            Decimal         @db.Decimal(10, 2)
+  quantity             Int             @default(1)
+  order                Int             @default(0)
+
+  offerId String
+  offer   Offer  @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([offerId])
+  @@map("offer_positions")
+}
+
+model OfferDiscount {
+  id          String            @id @default(cuid())
+  label       String
+  description String?
+  kind        OfferDiscountKind
+  value       Decimal           @db.Decimal(10, 2)
+  order       Int               @default(0)
+
+  offerId String
+  offer   Offer  @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([offerId])
+  @@map("offer_discounts")
 }

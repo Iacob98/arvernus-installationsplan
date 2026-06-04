@@ -24,7 +24,17 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Mail, Phone, MapPin, Trash2, MailX, MailCheck } from "lucide-react";
-import { updateClientStatus, deleteClient, toggleUnsubscribe, assignClient, type ClientDetail } from "@/lib/actions/clients";
+import {
+  updateClientStatus,
+  deleteClient,
+  toggleUnsubscribe,
+  assignClient,
+  updateClientInquiry,
+  type ClientDetail,
+} from "@/lib/actions/clients";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Pencil, Check, X } from "lucide-react";
 import { ClientStatusSelect } from "./client-status-select";
 import { DealProbabilitySelect } from "./deal-probability-select";
 import { ReminderSection } from "./reminder-section";
@@ -32,64 +42,144 @@ import { ClientNotesSection } from "./client-notes-section";
 import { ClientAttachmentsSection } from "./client-attachments-section";
 import { EmailComposeDialog } from "./email-compose-dialog";
 import { EmailLogSection } from "./email-log-section";
+import { OfferSection } from "@/components/offers/offer-section";
+import { OfferWizardDialog } from "@/components/offers/offer-wizard-dialog";
+import { CallLogSection } from "./call-log-section";
+import type { CatalogItemForClient } from "@/lib/actions/catalog";
 import { toast } from "sonner";
 
 interface ClientDetailContentProps {
   client: ClientDetail;
   users?: { id: string; name: string }[];
   isAdmin?: boolean;
+  catalog: CatalogItemForClient[];
 }
 
 const INQUIRY_FIELDS: { key: keyof ClientDetail; label: string }[] = [
+  { key: "wohnflaecheM2", label: "Beheizte Wohnfläche (m²)" },
+  { key: "annualKwhGas", label: "Jahresverbrauch (kWh / Öl / m³)" },
+  { key: "wohneinheiten", label: "Anzahl Wohneinheiten" },
+  { key: "heizsystem", label: "Heizsystem" },
+  { key: "hotWaterIncluded", label: "Warmwasser durch Wärmepumpe" },
+  { key: "currentHeating", label: "Aktueller Heizungstyp" },
+  { key: "heatingAge", label: "Alter / Baujahr der Heizung" },
+  { key: "incomeRange", label: "Haushaltseinkommen / Jahr" },
   { key: "ownership", label: "Eigentumsverhältnis" },
   { key: "buildingType", label: "Gebäudetyp" },
   { key: "constructionYear", label: "Baujahr" },
   { key: "householdSize", label: "Personenanzahl im Haushalt" },
-  { key: "currentHeating", label: "Aktuelle Heizung" },
   { key: "currentFuel", label: "Genutzter Brennstoff" },
-  { key: "heatingAge", label: "Alter der Heizung" },
-  { key: "hotWaterIncluded", label: "Wärmepumpe mit Wassererwärmung" },
   { key: "timeframe", label: "Zeitrahmen" },
   { key: "availability", label: "Erreichbarkeit" },
-  { key: "annualKwhGas", label: "Jahresverbrauch in kWh (Gas)" },
   { key: "annualLitersOil", label: "Jahresverbrauch in Liter (Heizöl)" },
 ];
 
 function InquiryDetailsCard({ client }: { client: ClientDetail }) {
-  const filled = INQUIRY_FIELDS.filter((f) => client[f.key]);
-  if (filled.length === 0 && !client.additionalInfo) return null;
+  const [editing, setEditing] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [draft, setDraft] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    for (const f of INQUIRY_FIELDS) initial[f.key] = (client[f.key] as string) ?? "";
+    initial.additionalInfo = client.additionalInfo ?? "";
+    return initial;
+  });
+
+  function startEdit() {
+    const initial: Record<string, string> = {};
+    for (const f of INQUIRY_FIELDS) initial[f.key] = (client[f.key] as string) ?? "";
+    initial.additionalInfo = client.additionalInfo ?? "";
+    setDraft(initial);
+    setEditing(true);
+  }
+
+  function cancel() {
+    setEditing(false);
+  }
+
+  function save() {
+    startTransition(async () => {
+      try {
+        await updateClientInquiry(client.id, draft);
+        toast.success("Anfragedetails gespeichert");
+        setEditing(false);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Fehler beim Speichern");
+      }
+    });
+  }
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Anfragedetails</CardTitle>
+        {editing ? (
+          <div className="flex gap-1">
+            <Button size="sm" variant="ghost" onClick={cancel} disabled={pending}>
+              <X className="h-4 w-4 mr-1" />
+              Abbrechen
+            </Button>
+            <Button size="sm" onClick={save} disabled={pending}>
+              <Check className="h-4 w-4 mr-1" />
+              {pending ? "Speichern…" : "Speichern"}
+            </Button>
+          </div>
+        ) : (
+          <Button size="sm" variant="outline" onClick={startEdit}>
+            <Pencil className="h-3 w-3 mr-1" />
+            Bearbeiten
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
-        {filled.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {filled.map((f) => (
-              <div key={f.key} className="space-y-1">
-                <p className="text-xs text-muted-foreground">{f.label}</p>
-                <p className="text-sm">{String(client[f.key])}</p>
-              </div>
-            ))}
-          </div>
-        )}
-        {client.additionalInfo && (
-          <div className="space-y-1 pt-2 border-t">
-            <p className="text-xs text-muted-foreground">Zusätzliche Projektinformationen</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {INQUIRY_FIELDS.map((f) => (
+            <div key={f.key} className="space-y-1">
+              <Label className="text-xs text-muted-foreground">{f.label}</Label>
+              {editing ? (
+                <Input
+                  value={draft[f.key] ?? ""}
+                  onChange={(e) =>
+                    setDraft((d) => ({ ...d, [f.key]: e.target.value }))
+                  }
+                />
+              ) : (
+                <p className="text-sm">
+                  {(client[f.key] as string) || (
+                    <span className="text-muted-foreground/60">—</span>
+                  )}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="space-y-1 pt-2 border-t">
+          <Label className="text-xs text-muted-foreground">
+            Zusätzliche Projektinformationen
+          </Label>
+          {editing ? (
+            <Textarea
+              rows={3}
+              value={draft.additionalInfo ?? ""}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, additionalInfo: e.target.value }))
+              }
+            />
+          ) : client.additionalInfo ? (
             <p className="text-sm whitespace-pre-wrap">{client.additionalInfo}</p>
-          </div>
-        )}
+          ) : (
+            <p className="text-sm text-muted-foreground/60">—</p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-export function ClientDetailContent({ client, users, isAdmin }: ClientDetailContentProps) {
+export function ClientDetailContent({ client, users, isAdmin, catalog }: ClientDetailContentProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showOfferWizard, setShowOfferWizard] = useState(false);
 
   function handleStatusChange(status: ClientStatus) {
     startTransition(async () => {
@@ -266,6 +356,16 @@ export function ClientDetailContent({ client, users, isAdmin }: ClientDetailCont
       {/* Anfragedetails */}
       <InquiryDetailsCard client={client} />
 
+      {/* Angebote */}
+      <OfferSection
+        clientId={client.id}
+        offers={client.offers}
+        onNew={() => setShowOfferWizard(true)}
+      />
+
+      {/* Anrufe */}
+      <CallLogSection clientId={client.id} callLogs={client.callLogs} />
+
       {/* Reminders */}
       <ReminderSection clientId={client.id} reminders={client.reminders} />
 
@@ -343,6 +443,26 @@ export function ClientDetailContent({ client, users, isAdmin }: ClientDetailCont
           </Button>
         </CardContent>
       </Card>
+
+      {/* Offer Wizard */}
+      <OfferWizardDialog
+        open={showOfferWizard}
+        onOpenChange={setShowOfferWizard}
+        clientId={client.id}
+        clientName={`${client.firstName} ${client.lastName}`.trim()}
+        inquiry={{
+          wohnflaecheM2: client.wohnflaecheM2,
+          annualKwhGas: client.annualKwhGas,
+          wohneinheiten: client.wohneinheiten,
+          heizsystem: client.heizsystem,
+          hotWaterIncluded: client.hotWaterIncluded,
+          currentHeating: client.currentHeating,
+          heatingAge: client.heatingAge,
+          incomeRange: client.incomeRange,
+          additionalInfo: client.additionalInfo,
+        }}
+        catalog={catalog}
+      />
 
       {/* Delete confirmation dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

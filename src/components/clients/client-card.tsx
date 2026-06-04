@@ -63,25 +63,39 @@ export function ClientCard({ client }: ClientCardProps) {
     (r) => startOfDay(r.date).getTime() === today.getTime()
   );
 
+  const accentClass = hasOverdue
+    ? "border-l-4 border-l-red-500 bg-red-50/40 dark:bg-red-950/20"
+    : hasTodayReminder
+      ? "border-l-4 border-l-orange-500 bg-orange-50/40 dark:bg-orange-950/20"
+      : "";
+
   return (
     <Link href={`/clients/${client.id}`}>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer">
+      <Card
+        className={`hover:shadow-md transition-shadow cursor-pointer ${accentClass}`}
+      >
         <CardContent className="flex items-center justify-between gap-2 py-4">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <p className="font-medium truncate">
                 {client.salutation} {client.firstName} {client.lastName}
               </p>
-              {activeReminders.length > 0 && (
-                <Bell
-                  className={`h-3.5 w-3.5 shrink-0 ${
-                    hasOverdue
-                      ? "text-red-500"
-                      : hasTodayReminder
-                        ? "text-orange-500"
-                        : "text-muted-foreground"
-                  }`}
-                />
+              {hasOverdue && (
+                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                  <Bell className="h-3 w-3 mr-1" />
+                  Rückruf überfällig
+                </Badge>
+              )}
+              {!hasOverdue && hasTodayReminder && (
+                <Badge
+                  className="text-[10px] px-1.5 py-0 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+                >
+                  <Bell className="h-3 w-3 mr-1" />
+                  Rückruf heute
+                </Badge>
+              )}
+              {!hasOverdue && !hasTodayReminder && activeReminders.length > 0 && (
+                <Bell className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               )}
               {client.unsubscribed && (
                 <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
