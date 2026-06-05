@@ -48,6 +48,13 @@ export const kfwFoerderungSchema = z.object({
   foerderfaehigeKosten: z.number().nonnegative(),
 });
 
+export const serviceLineSchema = z.object({
+  presetId: z.string().min(1),
+  enabled: z.boolean(),
+  quantity: z.number().int().min(0),
+  unitPrice: z.number().nonnegative(),
+});
+
 export const heatBalanceSchema = z.object({
   enabled: z.boolean(),
   annualConsumptionKwh: z.number().nonnegative(),
@@ -65,16 +72,33 @@ export const createOfferSchema = z.object({
   title: z.string().min(1),
   validUntilDays: z.number().int().min(1),
   inquiry: offerInquirySchema,
-  positions: z.array(offerPositionSchema).min(1, "Mindestens eine Position"),
+  positions: z.array(offerPositionSchema),
+  services: z.array(serviceLineSchema),
   discounts: z.array(offerDiscountSchema),
   heatBalance: heatBalanceSchema,
   serviceItems: z.array(z.string().min(1)),
   kfwFoerderung: kfwFoerderungSchema,
-});
+}).refine(
+  (d) =>
+    d.positions.length > 0 ||
+    d.services.some((s) => s.enabled && s.quantity > 0),
+  {
+    message: "Mindestens eine Position oder Dienstleistung erforderlich",
+    path: ["positions"],
+  },
+);
 
-/** Wie createOfferSchema, aber positions darf leer sein (für Drafts). */
-export const draftOfferSchema = createOfferSchema.extend({
+/** Wie createOfferSchema, aber positions/services dürfen leer sein (für Drafts). */
+export const draftOfferSchema = z.object({
+  title: z.string().min(1),
+  validUntilDays: z.number().int().min(1),
+  inquiry: offerInquirySchema,
   positions: z.array(offerPositionSchema),
+  services: z.array(serviceLineSchema),
+  discounts: z.array(offerDiscountSchema),
+  heatBalance: heatBalanceSchema,
+  serviceItems: z.array(z.string().min(1)),
+  kfwFoerderung: kfwFoerderungSchema,
 });
 
 export const sendOfferSchema = z.object({

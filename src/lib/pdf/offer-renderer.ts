@@ -13,6 +13,7 @@ import { PDFDocument } from "pdf-lib";
 import { OFFER_AGB_INTRO_HTML, OFFER_AGB_OUTRO_HTML } from "./offer-agb";
 import { DEFAULT_SERVICE_ITEMS, parseServiceItems } from "@/lib/offer-service-items";
 import { calcKfw, parseKfwFoerderung } from "@/lib/kfw-foerderung";
+import { FOERDERSERVICE_NAME } from "@/lib/offer-services";
 import { Prisma, CatalogItemType, OfferDiscountKind } from "@prisma/client";
 import { calcHeatBalance, MONTHS_DE, parseHeatBalance } from "@/lib/heat-balance";
 import { readFile } from "node:fs/promises";
@@ -34,9 +35,12 @@ const TYPE_LABELS: Record<CatalogItemType, string> = {
   INNENGERAET: "Innengerät",
   HEIZUNGSSPEICHER: "Heizungsspeicher",
   WARMWASSERSPEICHER: "Warmwasserspeicher",
+  DIENSTLEISTUNG: "Dienstleistung",
   ANDERE: "Andere",
 };
 
+/** Tipy которые показываются как отдельные страницы с фото и описанием.
+ *  DIENSTLEISTUNG исключена — они сводятся в одну строку «Installationspaket». */
 const TYPE_ORDER: CatalogItemType[] = [
   "WAERMEPUMPE",
   "INNENGERAET",
@@ -288,7 +292,25 @@ function renderSummaryPage(
   logoSrc: string | null,
   dateLabel: string,
 ): string {
-  const rows = offer.positions
+  // Split positions: products vs Dienstleistungen, with Förderservice separate
+  const products = offer.positions.filter((p) => p.itemType !== "DIENSTLEISTUNG");
+  const services = offer.positions.filter(
+    (p) => p.itemType === "DIENSTLEISTUNG" && p.name !== FOERDERSERVICE_NAME,
+  );
+  const foerderservices = offer.positions.filter(
+    (p) => p.itemType === "DIENSTLEISTUNG" && p.name === FOERDERSERVICE_NAME,
+  );
+
+  const installationspaketTotal = services.reduce(
+    (s, p) => s + toNumber(p.unitPrice) * p.quantity,
+    0,
+  );
+  const foerderservicePrice = foerderservices.reduce(
+    (s, p) => s + toNumber(p.unitPrice) * p.quantity,
+    0,
+  );
+
+  const rows = products
     .map(
       (p) => `<tr>
       <td>${escHtml(p.name)}</td>
@@ -297,6 +319,24 @@ function renderSummaryPage(
     </tr>`,
     )
     .join("");
+
+  const installationRow =
+    services.length > 0
+      ? `<tr>
+          <td>Installationspaket <span style="color:#888;">(${services.length} Leistungen)</span></td>
+          <td>Dienstleistung</td>
+          <td class="num">${fmtEUR(installationspaketTotal)}</td>
+        </tr>`
+      : "";
+
+  const foerderRow =
+    foerderservices.length > 0
+      ? `<tr>
+          <td>Förderservice</td>
+          <td>Dienstleistung</td>
+          <td class="num" style="color:#2e7d32;font-weight:600;">${foerderservicePrice > 0 ? fmtEUR(foerderservicePrice) : "inklusive"}</td>
+        </tr>`
+      : "";
 
   const discountRows = totals.appliedDiscounts
     .map(
@@ -332,7 +372,7 @@ function renderSummaryPage(
       <thead>
         <tr><th>Name</th><th>Typ</th><th class="num">Anzahl</th></tr>
       </thead>
-      <tbody>${rows}</tbody>
+      <tbody>${rows}${installationRow}${foerderRow}</tbody>
     </table>
 
     <div class="offer-totals">

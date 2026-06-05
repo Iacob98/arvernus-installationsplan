@@ -9,6 +9,7 @@ import {
   CreateOfferData,
   SendOfferData,
 } from "@/lib/validations/offer";
+import { SERVICE_PRESETS } from "@/lib/offer-services";
 import { renderOfferPdf, calculateTotals } from "@/lib/pdf/offer-renderer";
 import { uploadFile, deleteFile, getFileBuffer } from "@/lib/storage";
 import { smtpTransporter } from "@/lib/email/smtp";
@@ -66,6 +67,58 @@ export async function getOffer(id: string): Promise<OfferDetail | null> {
   });
 }
 
+type PositionCreate = {
+  catalogItemVariantId: string | null;
+  name: string;
+  description: string | null;
+  itemType: "WAERMEPUMPE" | "INNENGERAET" | "HEIZUNGSSPEICHER" | "WARMWASSERSPEICHER" | "DIENSTLEISTUNG" | "ANDERE";
+  manufacturer: string | null;
+  photoStoragePath: string | null;
+  technicalData: { key: string; value: string }[];
+  unitPrice: number;
+  quantity: number;
+  order: number;
+};
+
+function buildPositionCreates(
+  positions: CreateOfferData["positions"],
+  services: CreateOfferData["services"],
+): PositionCreate[] {
+  const out: PositionCreate[] = positions.map((p, idx) => ({
+    catalogItemVariantId: p.catalogItemVariantId ?? null,
+    name: p.name,
+    description: p.description ?? null,
+    itemType: p.itemType,
+    manufacturer: p.manufacturer ?? null,
+    photoStoragePath: p.photoStoragePath ?? null,
+    technicalData: p.technicalData,
+    unitPrice: p.unitPrice,
+    quantity: p.quantity,
+    order: p.order || idx,
+  }));
+
+  const base = out.length;
+  services
+    .filter((s) => s.enabled && s.quantity > 0)
+    .forEach((s, sidx) => {
+      const preset = SERVICE_PRESETS.find((p) => p.id === s.presetId);
+      out.push({
+        catalogItemVariantId: null,
+        name: preset?.name ?? s.presetId,
+        description: preset?.description ?? null,
+        itemType: "DIENSTLEISTUNG",
+        manufacturer: null,
+        photoStoragePath: null,
+        technicalData: [],
+        unitPrice: s.unitPrice,
+        quantity: s.quantity,
+        order: base + sidx,
+      });
+    });
+
+  return out;
+}
+
 async function generateOfferNumber(): Promise<string> {
   const year = new Date().getFullYear();
   const prefix = `A-${year}-`;
@@ -120,18 +173,7 @@ export async function createOffer(clientId: string, data: CreateOfferData) {
         clientId,
         createdById: session.user.id,
         positions: {
-          create: validated.positions.map((p, idx) => ({
-            catalogItemVariantId: p.catalogItemVariantId ?? null,
-            name: p.name,
-            description: p.description ?? null,
-            itemType: p.itemType,
-            manufacturer: p.manufacturer ?? null,
-            photoStoragePath: p.photoStoragePath ?? null,
-            technicalData: p.technicalData,
-            unitPrice: p.unitPrice,
-            quantity: p.quantity,
-            order: p.order || idx,
-          })),
+          create: buildPositionCreates(validated.positions, validated.services),
         },
         discounts: {
           create: validated.discounts.map((d, idx) => ({
@@ -195,18 +237,7 @@ export async function saveOfferDraft(clientId: string, data: CreateOfferData) {
         clientId,
         createdById: session.user.id,
         positions: {
-          create: validated.positions.map((p, idx) => ({
-            catalogItemVariantId: p.catalogItemVariantId ?? null,
-            name: p.name,
-            description: p.description ?? null,
-            itemType: p.itemType,
-            manufacturer: p.manufacturer ?? null,
-            photoStoragePath: p.photoStoragePath ?? null,
-            technicalData: p.technicalData,
-            unitPrice: p.unitPrice,
-            quantity: p.quantity,
-            order: p.order || idx,
-          })),
+          create: buildPositionCreates(validated.positions, validated.services),
         },
         discounts: {
           create: validated.discounts.map((d, idx) => ({

@@ -23,6 +23,7 @@ const TYPE_LABELS: Record<(typeof CATALOG_ITEM_TYPES)[number], string> = {
   INNENGERAET: "Innengerät",
   HEIZUNGSSPEICHER: "Heizungsspeicher",
   WARMWASSERSPEICHER: "Warmwasserspeicher",
+  DIENSTLEISTUNG: "Dienstleistung",
   ANDERE: "Andere",
 };
 

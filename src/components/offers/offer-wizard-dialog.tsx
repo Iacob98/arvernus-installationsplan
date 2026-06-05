@@ -52,12 +52,18 @@ import {
   type BaujahrChip,
 } from "@/lib/heizlast";
 import { OFFER_TEMPLATES, resolveTemplate } from "@/lib/offer-templates";
+import {
+  SERVICE_PRESETS,
+  defaultServiceLines,
+  type ServiceLineState,
+} from "@/lib/offer-services";
 
 const TYPE_LABELS: Record<(typeof CATALOG_ITEM_TYPES)[number], string> = {
   WAERMEPUMPE: "Wärmepumpe",
   INNENGERAET: "Innengerät",
   HEIZUNGSSPEICHER: "Heizungsspeicher",
   WARMWASSERSPEICHER: "Warmwasserspeicher",
+  DIENSTLEISTUNG: "Dienstleistung",
   ANDERE: "Andere",
 };
 
@@ -176,6 +182,7 @@ function OfferWizardContent({
         additionalInfo: inquiry.additionalInfo ?? "",
       },
       positions: [],
+      services: defaultServiceLines(),
       discounts: [],
       heatBalance: {
         ...DEFAULT_HEAT_BALANCE,
@@ -192,6 +199,7 @@ function OfferWizardContent({
   const discounts = useFieldArray({ control, name: "discounts" });
   const watchedPositionsRaw = useWatch({ control, name: "positions" });
   const watchedDiscountsRaw = useWatch({ control, name: "discounts" });
+  const watchedServicesRaw = useWatch({ control, name: "services" });
   const watchedPositions = useMemo(
     () => watchedPositionsRaw ?? [],
     [watchedPositionsRaw],
@@ -200,22 +208,31 @@ function OfferWizardContent({
     () => watchedDiscountsRaw ?? [],
     [watchedDiscountsRaw],
   );
-
-  const totals = useMemo(
-    () =>
-      calcTotals({
-        positions: watchedPositions.map((p) => ({
-          unitPrice: Number(p.unitPrice) || 0,
-          quantity: Number(p.quantity) || 0,
-        })),
-        discounts: watchedDiscounts.map((d) => ({
-          kind: d.kind,
-          value: Number(d.value) || 0,
-          label: d.label,
-        })),
-      }),
-    [watchedPositions, watchedDiscounts],
+  const watchedServices = useMemo(
+    () => watchedServicesRaw ?? [],
+    [watchedServicesRaw],
   );
+
+  const totals = useMemo(() => {
+    const posItems = watchedPositions.map((p) => ({
+      unitPrice: Number(p.unitPrice) || 0,
+      quantity: Number(p.quantity) || 0,
+    }));
+    const svcItems = watchedServices
+      .filter((s) => s.enabled && (s.quantity ?? 0) > 0)
+      .map((s) => ({
+        unitPrice: Number(s.unitPrice) || 0,
+        quantity: Number(s.quantity) || 0,
+      }));
+    return calcTotals({
+      positions: [...posItems, ...svcItems],
+      discounts: watchedDiscounts.map((d) => ({
+        kind: d.kind,
+        value: Number(d.value) || 0,
+        label: d.label,
+      })),
+    });
+  }, [watchedPositions, watchedServices, watchedDiscounts]);
 
   async function onSubmit(data: CreateOfferData) {
     startTransition(async () => {
@@ -251,9 +268,14 @@ function OfferWizardContent({
   }
 
   function nextStep() {
-    if (step === 1 && watchedPositions.length === 0) {
-      toast.error("Mindestens eine Position erforderlich");
-      return;
+    if (step === 1) {
+      const hasService = watchedServices.some(
+        (s) => s.enabled && (s.quantity ?? 0) > 0,
+      );
+      if (watchedPositions.length === 0 && !hasService) {
+        toast.error("Mindestens eine Position oder Dienstleistung erforderlich");
+        return;
+      }
     }
     setStep((s) => Math.min(STEPS.length - 1, s + 1));
   }
@@ -296,6 +318,7 @@ function OfferWizardContent({
               register={register}
               setValue={setValue}
               positions={watchedPositions}
+              control={control}
             />
           )}
           {step === 2 && (
@@ -694,6 +717,7 @@ interface PositionsStepProps {
   register: ReturnType<typeof useForm<CreateOfferData>>["register"];
   setValue: ReturnType<typeof useForm<CreateOfferData>>["setValue"];
   positions: CreateOfferData["positions"];
+  control: ReturnType<typeof useForm<CreateOfferData>>["control"];
 }
 
 function PositionsStep({
@@ -702,7 +726,9 @@ function PositionsStep({
   append,
   remove,
   register,
+  setValue,
   positions,
+  control,
 }: PositionsStepProps) {
   const [selectedItemId, setSelectedItemId] = useState<string>("");
   const [selectedVariantId, setSelectedVariantId] = useState<string>("");
@@ -874,6 +900,8 @@ function PositionsStep({
           )}
         </CardContent>
       </Card>
+
+      <ServicesCard control={control} setValue={setValue} />
 
       <Card>
         <CardHeader>
@@ -1653,5 +1681,124 @@ function Legend({ color, label }: { color: string; label: string }) {
       <div className="w-3 h-3 rounded-sm" style={{ background: color }} />
       <span>{label}</span>
     </div>
+  );
+}
+
+function ServicesCard({
+  control,
+  setValue,
+}: {
+  control: ReturnType<typeof useForm<CreateOfferData>>["control"];
+  setValue: ReturnType<typeof useForm<CreateOfferData>>["setValue"];
+}) {
+  const services = (useWatch({ control, name: "services" }) ?? []) as ServiceLineState[];
+
+  function update(idx: number, patch: Partial<ServiceLineState>) {
+    const next = services.map((s, i) => (i === idx ? { ...s, ...patch } : s));
+    setValue("services", next, { shouldDirty: true });
+  }
+
+  function selectAll(enabled: boolean) {
+    setValue(
+      "services",
+      services.map((s) => ({ ...s, enabled })),
+      { shouldDirty: true },
+    );
+  }
+
+  const enabledCount = services.filter((s) => s.enabled).length;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base">
+            Dienstleistungen ({enabledCount} / {services.length})
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Auswählen, Menge und Einzelpreis bei Bedarf anpassen. Erscheinen als
+            eigene Gruppe in den Bestandteilen.
+          </p>
+        </div>
+        <div className="flex gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => selectAll(true)}
+          >
+            Alle
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => selectAll(false)}
+          >
+            Keine
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {services.map((s, idx) => {
+          const preset = SERVICE_PRESETS.find((p) => p.id === s.presetId);
+          if (!preset) return null;
+          return (
+            <div
+              key={s.presetId}
+              className={`rounded-md border p-3 ${s.enabled ? "" : "opacity-60"}`}
+            >
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={s.enabled}
+                  onChange={(e) => update(idx, { enabled: e.target.checked })}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium">{preset.name}</div>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    {preset.description}
+                  </p>
+                </div>
+                <div className="flex items-end gap-2 shrink-0">
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Menge</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={s.quantity}
+                      onChange={(e) =>
+                        update(idx, { quantity: Math.max(0, Number(e.target.value) || 0) })
+                      }
+                      className="w-20 h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px]">Preis (€)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={s.unitPrice}
+                      onChange={(e) =>
+                        update(idx, {
+                          unitPrice: Math.max(0, Number(e.target.value) || 0),
+                        })
+                      }
+                      className="w-28 h-8 text-sm"
+                    />
+                  </div>
+                  <div className="text-sm font-semibold w-28 text-right whitespace-nowrap pb-1">
+                    {fmtEUR(s.quantity * s.unitPrice)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }
