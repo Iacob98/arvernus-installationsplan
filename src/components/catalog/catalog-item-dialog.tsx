@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useTransition } from "react";
-import { useForm, useFieldArray, useWatch } from "react-hook-form";
+import { useForm, useFieldArray, useWatch, useController } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
@@ -166,21 +166,7 @@ export function CatalogItemDialog({ open, onOpenChange, item }: Props) {
                 </div>
                 <div className="space-y-2">
                   <Label>Typ</Label>
-                  <Select
-                    onValueChange={(v) => setValue("type", v as CatalogItemFormData["type"])}
-                    defaultValue="WAERMEPUMPE"
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATALOG_ITEM_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {TYPE_LABELS[t]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <TypeSelect control={control} />
                 </div>
               </div>
 
@@ -252,6 +238,28 @@ export function CatalogItemDialog({ open, onOpenChange, item }: Props) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function TypeSelect({
+  control,
+}: {
+  control: ReturnType<typeof useForm<CatalogItemFormData>>["control"];
+}) {
+  const { field } = useController({ control, name: "type" });
+  return (
+    <Select value={field.value} onValueChange={field.onChange}>
+      <SelectTrigger>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {CATALOG_ITEM_TYPES.map((t) => (
+          <SelectItem key={t} value={t}>
+            {TYPE_LABELS[t]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

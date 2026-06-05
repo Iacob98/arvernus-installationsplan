@@ -381,6 +381,9 @@ function renderSummaryPage(
       <div class="row label"><span>Gesamt (Netto)</span><span>${fmtEUR(totals.netto)}</span></div>
       <div class="row label"><span>MwSt. (${(VAT_RATE * 100).toFixed(1).replace(".", ",")} % auf ${fmtEUR(totals.netto)})</span><span>${fmtEUR(totals.vat)}</span></div>
       <div class="row total"><span>Gesamt (Brutto)</span><span>${fmtEUR(totals.brutto)}</span></div>
+      <div style="font-size:9pt;color:#888;margin-top:6px;padding:0 6px;text-align:right;font-style:italic;">
+        Demontage Altanlage und Neumontage All-Inkl. — max. 5 Werktage
+      </div>
     </div>
 
     ${
