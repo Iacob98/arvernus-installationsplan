@@ -20,6 +20,13 @@ import { toast } from "sonner";
 import type { OfferDetailForClient } from "@/lib/actions/offers";
 import { deleteOffer, sendOffer } from "@/lib/actions/offers";
 import { calcTotals, fmtEUR } from "@/lib/offer-totals";
+import { calcKfw, parseKfwFoerderung } from "@/lib/kfw-foerderung";
+import {
+  defaultOfferEmailBody,
+  DEFAULT_FINANZIERUNG_MONATE,
+  DEFAULT_RABATT_FRIST_TAGE,
+  DEFAULT_RABATT_PERCENT,
+} from "@/lib/offer-email-template";
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: "Entwurf",
@@ -42,15 +49,6 @@ const STATUS_VARIANTS: Record<string, "default" | "secondary" | "outline"> = {
 export function OfferDetailPage({ offer }: { offer: OfferDetailForClient }) {
   const router = useRouter();
   const clientName = `${offer.client.firstName} ${offer.client.lastName}`.trim();
-  const defaultSubject = offer.emailSubject ?? `Ihr Angebot ${offer.offerNumber}`;
-  const defaultBody =
-    offer.emailBody ??
-    `Hallo ${offer.client.firstName ?? ""},\n\nim Anhang finden Sie Ihr individuelles Angebot.\n\nBei Rückfragen melden Sie sich gerne.\n\nViele Grüße`;
-
-  const [subject, setSubject] = useState(defaultSubject);
-  const [body, setBody] = useState(defaultBody);
-  const [attachPdf, setAttachPdf] = useState(true);
-  const [pending, startTransition] = useTransition();
 
   const totals = calcTotals({
     positions: offer.positions.map((p) => ({
@@ -63,6 +61,30 @@ export function OfferDetailPage({ offer }: { offer: OfferDetailForClient }) {
       label: d.label,
     })),
   });
+
+  const kfw = parseKfwFoerderung(offer.kfwFoerderung);
+  const foerderungAmount =
+    kfw && kfw.enabled
+      ? calcKfw(kfw).amount + totals.foerderungTotal
+      : totals.foerderungTotal;
+
+  const defaultSubject = offer.emailSubject ?? `Ihr Angebot ${offer.offerNumber}`;
+  const defaultBody =
+    offer.emailBody ??
+    defaultOfferEmailBody({
+      firstName: offer.client.firstName,
+      bruttoTotal: totals.brutto,
+      foerderungAmount,
+      rabattPercent: DEFAULT_RABATT_PERCENT,
+      rabattFristTage: DEFAULT_RABATT_FRIST_TAGE,
+      finanzierungMonate: DEFAULT_FINANZIERUNG_MONATE,
+      managerName: offer.createdBy.name,
+    });
+
+  const [subject, setSubject] = useState(defaultSubject);
+  const [body, setBody] = useState(defaultBody);
+  const [attachPdf, setAttachPdf] = useState(true);
+  const [pending, startTransition] = useTransition();
 
   function handleSend() {
     if (!offer.client.email) {
