@@ -53,6 +53,8 @@ export const serviceLineSchema = z.object({
   enabled: z.boolean(),
   quantity: z.number().int().min(0),
   unitPrice: z.number().nonnegative(),
+  customName: z.string().nullable().optional(),
+  customDescription: z.string().nullable().optional(),
 });
 
 export const heatBalanceSchema = z.object({

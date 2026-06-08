@@ -673,6 +673,62 @@ function renderFoerderungPage(
   </div>`;
 }
 
+function renderDienstleistungenPage(
+  offer: OfferWithRelations,
+  company: { name: string; primaryColor: string },
+  logoSrc: string | null,
+  dateLabel: string,
+): string {
+  const services = offer.positions.filter(
+    (p) => p.itemType === "DIENSTLEISTUNG" && p.name !== FOERDERSERVICE_NAME,
+  );
+  const foerderservice = offer.positions.find(
+    (p) => p.itemType === "DIENSTLEISTUNG" && p.name === FOERDERSERVICE_NAME,
+  );
+  if (services.length === 0 && !foerderservice) return "";
+
+  const primary = company.primaryColor;
+
+  const rows = services
+    .map(
+      (s, idx) => `<div style="padding:14px 0;border-top:${idx === 0 ? "none" : "1px solid #eee"};page-break-inside:avoid;">
+        <div style="font-size:11pt;font-weight:600;color:#111;margin-bottom:4px;">
+          ${escHtml(s.name)}
+        </div>
+        ${
+          s.description
+            ? `<div style="font-size:9.5pt;color:#555;line-height:1.55;">${escHtml(s.description).replace(/\n/g, "<br>")}</div>`
+            : ""
+        }
+      </div>`,
+    )
+    .join("");
+
+  return `<div class="offer-page">
+    ${headerBar(logoSrc, company.name, "", "")}
+    <div class="offer-page-date">${escHtml(dateLabel)}</div>
+    <div class="offer-page-heading">Dienstleistungen</div>
+    <div class="offer-page-sub">Detailbeschreibung der enthaltenen Arbeiten und Leistungen.</div>
+
+    ${services.length > 0 ? `<div style="margin-top:14px;">${rows}</div>` : ""}
+
+    ${
+      foerderservice
+        ? `<div style="margin-top:24px;padding:14px 14px;border-left:3px solid ${primary};background:rgba(0,0,0,0.02);page-break-inside:avoid;">
+            <div style="font-size:11pt;font-weight:600;color:#111;margin-bottom:4px;">
+              ${escHtml(foerderservice.name)}
+            </div>
+            ${
+              foerderservice.description
+                ? `<div style="font-size:9.5pt;color:#555;line-height:1.55;">${escHtml(foerderservice.description).replace(/\n/g, "<br>")}</div>`
+                : ""
+            }
+          </div>`
+        : ""
+    }
+  </div>`;
+}
+
 function renderAgbPage(
   offer: OfferWithRelations,
   company: { name: string },
@@ -785,6 +841,7 @@ async function buildOfferDocuments(offerId: string): Promise<{
   const heatBalancePage = renderHeatBalancePage(offer, company, logoSrc, dateLabel);
   const foerderungPage = renderFoerderungPage(offer, totals, company, logoSrc, dateLabel);
   const summary = renderSummaryPage(offer, totals, company, logoSrc, dateLabel);
+  const services = renderDienstleistungenPage(offer, company, logoSrc, dateLabel);
   const agb = renderAgbPage(offer, company, logoSrc, dateLabel);
   const signature = renderSignaturePage(offer, company, logoSrc, dateLabel);
 
@@ -800,6 +857,7 @@ async function buildOfferDocuments(offerId: string): Promise<{
   ${heatBalancePage}
   ${foerderungPage}
   ${summary}
+  ${services}
   ${agb}
   ${signature}
 </body>

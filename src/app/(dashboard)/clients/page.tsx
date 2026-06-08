@@ -1,64 +1,61 @@
 export const dynamic = "force-dynamic";
 
-import {
-  getClient,
-  getClients,
-  getClientCounts,
-} from "@/lib/actions/clients";
+import { getClients, getClientCounts } from "@/lib/actions/clients";
 import { getActiveUsers } from "@/lib/actions/users";
-import {
-  listActiveCatalogItems,
-  type CatalogItemForClient,
-} from "@/lib/actions/catalog";
-import { listActiveOfferTemplates } from "@/lib/actions/offer-templates";
-import {
-  dbTemplateToOfferTemplate,
-  type OfferTemplate,
-} from "@/lib/offer-templates";
-import { serializeDecimals } from "@/lib/serialize";
 import { auth } from "@/lib/auth";
 import { ClientsPageContent } from "@/components/clients/clients-page-content";
+import type { KanbanClient } from "@/components/clients/clients-kanban-board";
 
-export default async function ClientsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ selected?: string }>;
-}) {
+export default async function ClientsPage() {
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
-  const sp = await searchParams;
-  const selectedId = sp.selected;
 
-  const [
-    clients,
-    counts,
-    users,
-    selectedClient,
-    catalogRaw,
-    templatesRaw,
-  ] = await Promise.all([
+  const [clients, counts, users] = await Promise.all([
     getClients(),
     getClientCounts(),
     isAdmin ? getActiveUsers() : Promise.resolve([]),
-    selectedId ? getClient(selectedId) : Promise.resolve(null),
-    listActiveCatalogItems(),
-    listActiveOfferTemplates(),
   ]);
 
-  const catalog: CatalogItemForClient[] = serializeDecimals(catalogRaw);
-  const offerTemplates: OfferTemplate[] = templatesRaw.map(
-    dbTemplateToOfferTemplate,
-  );
+  const kanbanClients: KanbanClient[] = clients.map((c) => ({
+    id: c.id,
+    salutation: c.salutation,
+    firstName: c.firstName,
+    lastName: c.lastName,
+    customerNumber: c.customerNumber,
+    city: c.city,
+    status: c.status,
+    source: c.source,
+    unsubscribed: c.unsubscribed,
+    updatedAt: c.updatedAt,
+    reminders: c.reminders.map((r) => ({
+      id: r.id,
+      date: r.date,
+      completed: r.completed,
+    })),
+    ownership: c.ownership,
+    constructionYear: c.constructionYear,
+    buildingType: c.buildingType,
+    heatingAge: c.heatingAge,
+    annualKwhGas: c.annualKwhGas,
+    annualLitersOil: c.annualLitersOil,
+    wohnflaecheM2: c.wohnflaecheM2,
+    incomeRange: c.incomeRange,
+    callsCount: c._count.callLogs,
+    offersCount: c._count.offers,
+    emailsCount: c._count.emailLogs,
+    lastCall: c.callLogs[0]?.calledAt ?? null,
+    lastOffer: c.offers[0]?.createdAt ?? null,
+    assignedTo: c.assignedTo
+      ? { id: c.assignedTo.id, name: c.assignedTo.name }
+      : null,
+  }));
 
   return (
     <ClientsPageContent
-      initialClients={clients}
+      initialClients={kanbanClients}
       initialCounts={counts}
       users={isAdmin ? users : undefined}
       isAdmin={isAdmin}
-      selectedClient={selectedClient}
-      catalog={catalog}
-      offerTemplates={offerTemplates}
     />
   );
 }

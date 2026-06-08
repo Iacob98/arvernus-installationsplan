@@ -9,7 +9,7 @@ import {
   CreateOfferData,
   SendOfferData,
 } from "@/lib/validations/offer";
-import { SERVICE_PRESETS } from "@/lib/offer-services";
+import { SERVICE_PRESETS, isCustomServiceId } from "@/lib/offer-services";
 import { renderOfferPdf, calculateTotals } from "@/lib/pdf/offer-renderer";
 import { uploadFile, deleteFile, getFileBuffer } from "@/lib/storage";
 import { smtpTransporter } from "@/lib/email/smtp";
@@ -101,11 +101,16 @@ function buildPositionCreates(
   services
     .filter((s) => s.enabled && s.quantity > 0)
     .forEach((s, sidx) => {
-      const preset = SERVICE_PRESETS.find((p) => p.id === s.presetId);
+      const preset = isCustomServiceId(s.presetId)
+        ? null
+        : SERVICE_PRESETS.find((p) => p.id === s.presetId);
+      const name =
+        preset?.name ?? s.customName?.trim() ?? "Eigene Dienstleistung";
+      const description = preset?.description ?? s.customDescription ?? null;
       out.push({
         catalogItemVariantId: null,
-        name: preset?.name ?? s.presetId,
-        description: preset?.description ?? null,
+        name,
+        description,
         itemType: "DIENSTLEISTUNG",
         manufacturer: null,
         photoStoragePath: null,

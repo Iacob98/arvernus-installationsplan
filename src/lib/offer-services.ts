@@ -129,10 +129,14 @@ export const SERVICE_PRESETS: ServicePreset[] = [
 export const FOERDERSERVICE_NAME = "Förderservice";
 
 export type ServiceLineState = {
+  /** preset id or `custom-<random>` for user-added entries */
   presetId: string;
   enabled: boolean;
   quantity: number;
   unitPrice: number;
+  /** populated when presetId is custom (no SERVICE_PRESETS entry) */
+  customName?: string | null;
+  customDescription?: string | null;
 };
 
 export function defaultServiceLines(): ServiceLineState[] {
@@ -141,5 +145,15 @@ export function defaultServiceLines(): ServiceLineState[] {
     enabled: p.defaultSelected,
     quantity: p.defaultQuantity,
     unitPrice: p.defaultPrice,
+    customName: null,
+    customDescription: null,
   }));
+}
+
+export function isCustomServiceId(id: string): boolean {
+  return id.startsWith("custom-");
+}
+
+export function newCustomServiceId(): string {
+  return `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }

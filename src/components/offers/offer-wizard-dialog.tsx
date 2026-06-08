@@ -55,6 +55,8 @@ import { resolveTemplate, type OfferTemplate } from "@/lib/offer-templates";
 import {
   SERVICE_PRESETS,
   defaultServiceLines,
+  isCustomServiceId,
+  newCustomServiceId,
   type ServiceLineState,
 } from "@/lib/offer-services";
 
@@ -1761,10 +1763,51 @@ function ServicesCard({
   setValue: ReturnType<typeof useForm<CreateOfferData>>["setValue"];
 }) {
   const services = (useWatch({ control, name: "services" }) ?? []) as ServiceLineState[];
+  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customDescription, setCustomDescription] = useState("");
+  const [customQuantity, setCustomQuantity] = useState(1);
+  const [customPrice, setCustomPrice] = useState(0);
 
   function update(idx: number, patch: Partial<ServiceLineState>) {
     const next = services.map((s, i) => (i === idx ? { ...s, ...patch } : s));
     setValue("services", next, { shouldDirty: true });
+  }
+
+  function removeAt(idx: number) {
+    setValue(
+      "services",
+      services.filter((_, i) => i !== idx),
+      { shouldDirty: true },
+    );
+  }
+
+  function addCustom() {
+    const name = customName.trim();
+    if (!name) {
+      toast.error("Name erforderlich");
+      return;
+    }
+    setValue(
+      "services",
+      [
+        ...services,
+        {
+          presetId: newCustomServiceId(),
+          enabled: true,
+          quantity: customQuantity,
+          unitPrice: customPrice,
+          customName: name,
+          customDescription: customDescription.trim() || null,
+        },
+      ],
+      { shouldDirty: true },
+    );
+    setCustomName("");
+    setCustomDescription("");
+    setCustomQuantity(1);
+    setCustomPrice(0);
+    setShowCustomForm(false);
   }
 
   function selectAll(enabled: boolean) {
@@ -1810,8 +1853,13 @@ function ServicesCard({
       </CardHeader>
       <CardContent className="space-y-2">
         {services.map((s, idx) => {
-          const preset = SERVICE_PRESETS.find((p) => p.id === s.presetId);
-          if (!preset) return null;
+          const isCustom = isCustomServiceId(s.presetId);
+          const preset = isCustom
+            ? null
+            : SERVICE_PRESETS.find((p) => p.id === s.presetId);
+          if (!isCustom && !preset) return null;
+          const name = preset?.name ?? s.customName ?? "Eigene Dienstleistung";
+          const description = preset?.description ?? s.customDescription ?? "";
           return (
             <div
               key={s.presetId}
@@ -1825,10 +1873,33 @@ function ServicesCard({
                   onChange={(e) => update(idx, { enabled: e.target.checked })}
                 />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium">{preset.name}</div>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                    {preset.description}
-                  </p>
+                  {isCustom ? (
+                    <Input
+                      value={s.customName ?? ""}
+                      onChange={(e) => update(idx, { customName: e.target.value })}
+                      placeholder="Bezeichnung"
+                      className="h-7 text-sm font-medium mb-1"
+                    />
+                  ) : (
+                    <div className="text-sm font-medium">{name}</div>
+                  )}
+                  {isCustom ? (
+                    <Textarea
+                      value={s.customDescription ?? ""}
+                      onChange={(e) =>
+                        update(idx, { customDescription: e.target.value })
+                      }
+                      placeholder="Beschreibung (optional)"
+                      rows={2}
+                      className="text-xs"
+                    />
+                  ) : (
+                    description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                        {description}
+                      </p>
+                    )
+                  )}
                 </div>
                 <div className="flex items-end gap-2 shrink-0">
                   <div className="space-y-1">
@@ -1862,11 +1933,89 @@ function ServicesCard({
                   <div className="text-sm font-semibold w-28 text-right whitespace-nowrap pb-1">
                     {fmtEUR(s.quantity * s.unitPrice)}
                   </div>
+                  {isCustom && (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeAt(idx)}
+                      className="h-8 w-8"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
           );
         })}
+
+        {showCustomForm ? (
+          <div className="rounded-md border-dashed border p-3 space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <Input
+                placeholder="Bezeichnung"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="Menge"
+                  value={customQuantity}
+                  onChange={(e) =>
+                    setCustomQuantity(Math.max(1, Number(e.target.value) || 1))
+                  }
+                />
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="Preis (€)"
+                  value={customPrice}
+                  onChange={(e) =>
+                    setCustomPrice(Math.max(0, Number(e.target.value) || 0))
+                  }
+                />
+              </div>
+            </div>
+            <Textarea
+              rows={2}
+              placeholder="Beschreibung (optional, erscheint im PDF)"
+              value={customDescription}
+              onChange={(e) => setCustomDescription(e.target.value)}
+            />
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setShowCustomForm(false);
+                  setCustomName("");
+                  setCustomDescription("");
+                  setCustomQuantity(1);
+                  setCustomPrice(0);
+                }}
+              >
+                Abbrechen
+              </Button>
+              <Button type="button" size="sm" onClick={addCustom}>
+                <Plus className="mr-1 h-3 w-3" /> Hinzufügen
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full border-dashed"
+            onClick={() => setShowCustomForm(true)}
+          >
+            <Plus className="mr-1 h-3 w-3" /> Eigene Dienstleistung
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

@@ -1,18 +1,18 @@
 export const dynamic = "force-dynamic";
 
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClient } from "@/lib/actions/clients";
-import { getActiveUsers } from "@/lib/actions/users";
-import { listActiveCatalogItems, type CatalogItemForClient } from "@/lib/actions/catalog";
+import {
+  listActiveCatalogItems,
+  type CatalogItemForClient,
+} from "@/lib/actions/catalog";
 import { listActiveOfferTemplates } from "@/lib/actions/offer-templates";
-import { dbTemplateToOfferTemplate, type OfferTemplate } from "@/lib/offer-templates";
+import {
+  dbTemplateToOfferTemplate,
+  type OfferTemplate,
+} from "@/lib/offer-templates";
 import { serializeDecimals } from "@/lib/serialize";
-import { auth } from "@/lib/auth";
-import { isAdmin } from "@/lib/auth-utils";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pencil } from "lucide-react";
-import { ClientDetailContent } from "@/components/clients/client-detail-content";
+import { ClientDetailWorkspace } from "@/components/clients/client-detail-workspace";
 
 export default async function ClientDetailPage({
   params,
@@ -20,49 +20,24 @@ export default async function ClientDetailPage({
   params: Promise<{ clientId: string }>;
 }) {
   const { clientId } = await params;
-  const client = await getClient(clientId);
-  if (!client) notFound();
 
-  const session = await auth();
-  const admin = session ? isAdmin(session) : false;
-  const [users, catalogRaw, templatesRaw] = await Promise.all([
-    admin ? getActiveUsers() : Promise.resolve([] as { id: string; name: string }[]),
+  const [client, catalogRaw, templatesRaw] = await Promise.all([
+    getClient(clientId),
     listActiveCatalogItems(),
     listActiveOfferTemplates(),
   ]);
+  if (!client) notFound();
+
   const catalog: CatalogItemForClient[] = serializeDecimals(catalogRaw);
-  const templates: OfferTemplate[] = templatesRaw.map(dbTemplateToOfferTemplate);
+  const offerTemplates: OfferTemplate[] = templatesRaw.map(
+    dbTemplateToOfferTemplate,
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/clients">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Zurück
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold">
-            {client.salutation} {client.firstName} {client.lastName}
-          </h1>
-          <p className="text-muted-foreground">{client.customerNumber}</p>
-        </div>
-        <Link href={`/clients/${clientId}/edit`}>
-          <Button variant="outline" size="sm">
-            <Pencil className="h-4 w-4 mr-1" />
-            Bearbeiten
-          </Button>
-        </Link>
-      </div>
-
-      <ClientDetailContent
-        client={client}
-        users={users}
-        isAdmin={admin}
-        catalog={catalog}
-        offerTemplates={templates}
-      />
-    </div>
+    <ClientDetailWorkspace
+      client={client}
+      catalog={catalog}
+      offerTemplates={offerTemplates}
+    />
   );
 }

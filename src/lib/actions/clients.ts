@@ -43,10 +43,27 @@ export async function getClients(search?: string, statusFilter?: ClientStatus, a
     where,
     orderBy: { updatedAt: "desc" },
     include: {
-      _count: { select: { projects: true } },
+      _count: {
+        select: {
+          projects: true,
+          callLogs: true,
+          offers: true,
+          emailLogs: true,
+        },
+      },
       reminders: {
         where: { completed: false },
         orderBy: { date: "asc" },
+      },
+      callLogs: {
+        orderBy: { calledAt: "desc" },
+        take: 1,
+        select: { calledAt: true },
+      },
+      offers: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { createdAt: true },
       },
       assignedTo: { select: { id: true, name: true } },
     },
@@ -265,6 +282,15 @@ export async function deleteClient(id: string) {
 
   await db.client.delete({ where: { id } });
   revalidatePath("/clients");
+}
+
+export async function updateClientNotes(id: string, notes: string) {
+  await requireAuth();
+  await db.client.update({
+    where: { id },
+    data: { notes: notes.trim() || null },
+  });
+  revalidatePath(`/clients/${id}`);
 }
 
 export async function toggleUnsubscribe(id: string, unsubscribed: boolean) {

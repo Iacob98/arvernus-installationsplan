@@ -171,7 +171,7 @@ function CallRow({ log }: { log: CallLogRow }) {
   );
 }
 
-function CallLogDialog({
+export function CallLogDialog({
   open,
   onOpenChange,
   clientId,
