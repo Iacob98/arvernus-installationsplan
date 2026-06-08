@@ -20,6 +20,8 @@ interface ClientsPageContentProps {
     total: number;
     neu: number;
     inBearbeitung: number;
+    angerufen: number;
+    angebotVersendet: number;
     verkauft: number;
     nichtVerkauft: number;
   };
@@ -67,9 +69,11 @@ export function ClientsPageContent({
   const tabItems = [
     { value: "ALL", label: "Alle", count: counts.total },
     { value: "NEU", label: "Neu", count: counts.neu },
-    { value: "IN_BEARBEITUNG", label: "In Bearbeitung", count: counts.inBearbeitung },
+    { value: "IN_BEARBEITUNG", label: "In Bearb.", count: counts.inBearbeitung },
+    { value: "ANGERUFEN", label: "Angerufen", count: counts.angerufen },
+    { value: "ANGEBOT_VERSENDET", label: "Angebot vers.", count: counts.angebotVersendet },
     { value: "VERKAUFT", label: "Verkauft", count: counts.verkauft },
-    { value: "NICHT_VERKAUFT", label: "Nicht verkauft", count: counts.nichtVerkauft },
+    { value: "NICHT_VERKAUFT", label: "Nicht verk.", count: counts.nichtVerkauft },
   ];
 
   return (

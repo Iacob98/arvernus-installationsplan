@@ -175,6 +175,8 @@ export function ClientForm({ defaultValues, onSubmit, submitLabel, loadingLabel,
                 <SelectContent>
                   <SelectItem value="NEU">Neu</SelectItem>
                   <SelectItem value="IN_BEARBEITUNG">In Bearbeitung</SelectItem>
+                  <SelectItem value="ANGERUFEN">Angerufen</SelectItem>
+                  <SelectItem value="ANGEBOT_VERSENDET">Angebot versendet</SelectItem>
                   <SelectItem value="VERKAUFT">Verkauft</SelectItem>
                   <SelectItem value="NICHT_VERKAUFT">Nicht verkauft</SelectItem>
                 </SelectContent>

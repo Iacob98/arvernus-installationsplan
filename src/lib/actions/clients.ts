@@ -52,16 +52,20 @@ export async function getClients(search?: string, statusFilter?: ClientStatus, a
     },
   });
 
-  // Sort: clients with overdue/today reminders first
-  const now = new Date();
-  now.setHours(23, 59, 59, 999);
+  // Pipeline-Sortierung: aktive Stufen oben, in jeder Stufe updatedAt DESC.
+  const STATUS_ORDER: Record<ClientStatus, number> = {
+    NEU: 0,
+    IN_BEARBEITUNG: 1,
+    ANGERUFEN: 2,
+    ANGEBOT_VERSENDET: 3,
+    VERKAUFT: 4,
+    NICHT_VERKAUFT: 5,
+  };
 
   return clients.sort((a, b) => {
-    const aHasUrgent = a.reminders.some((r) => r.date <= now);
-    const bHasUrgent = b.reminders.some((r) => r.date <= now);
-    if (aHasUrgent && !bHasUrgent) return -1;
-    if (!aHasUrgent && bHasUrgent) return 1;
-    return 0;
+    const cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+    if (cmp !== 0) return cmp;
+    return b.updatedAt.getTime() - a.updatedAt.getTime();
   });
 }
 
@@ -80,15 +84,33 @@ export async function getClientCounts(assignedToFilter?: string) {
     }
   }
 
-  const [total, neu, inBearbeitung, verkauft, nichtVerkauft] = await Promise.all([
+  const [
+    total,
+    neu,
+    inBearbeitung,
+    angerufen,
+    angebotVersendet,
+    verkauft,
+    nichtVerkauft,
+  ] = await Promise.all([
     db.client.count({ where: baseWhere }),
     db.client.count({ where: { ...baseWhere, status: "NEU" } }),
     db.client.count({ where: { ...baseWhere, status: "IN_BEARBEITUNG" } }),
+    db.client.count({ where: { ...baseWhere, status: "ANGERUFEN" } }),
+    db.client.count({ where: { ...baseWhere, status: "ANGEBOT_VERSENDET" } }),
     db.client.count({ where: { ...baseWhere, status: "VERKAUFT" } }),
     db.client.count({ where: { ...baseWhere, status: "NICHT_VERKAUFT" } }),
   ]);
 
-  return { total, neu, inBearbeitung, verkauft, nichtVerkauft };
+  return {
+    total,
+    neu,
+    inBearbeitung,
+    angerufen,
+    angebotVersendet,
+    verkauft,
+    nichtVerkauft,
+  };
 }
 
 const clientDetailInclude = {

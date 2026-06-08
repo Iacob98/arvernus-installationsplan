@@ -49,6 +49,7 @@ export type KpiTotals = {
 export type KpiResult = {
   period: KpiPeriod;
   since: string | null;
+  until: string | null;
   totals: KpiTotals;
   managers: ManagerKpi[];
 };
@@ -66,20 +67,44 @@ function sinceFor(period: KpiPeriod): Date | null {
   return d;
 }
 
+function parseDate(value: string | undefined, endOfDay = false): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return null;
+  if (endOfDay) d.setHours(23, 59, 59, 999);
+  else d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 function pct(numer: number, denom: number): number {
   if (!denom) return 0;
   return Math.round((numer / denom) * 1000) / 10;
 }
 
-export async function getKpi(period: KpiPeriod): Promise<KpiResult> {
+export async function getKpi(
+  period: KpiPeriod,
+  options?: { from?: string; to?: string },
+): Promise<KpiResult> {
   const session = await requireAuth();
   const isAdmin = session.user.role === "ADMIN";
   const restrictUserId = isAdmin ? null : session.user.id;
-  const since = sinceFor(period);
 
-  const callsDateWhere = since ? { calledAt: { gte: since } } : {};
-  const offersDateWhere = since ? { createdAt: { gte: since } } : {};
-  const updatedDateWhere = since ? { updatedAt: { gte: since } } : {};
+  const customFrom = parseDate(options?.from);
+  const customTo = parseDate(options?.to, true);
+  const hasCustomRange = customFrom !== null || customTo !== null;
+  const since = hasCustomRange ? customFrom : sinceFor(period);
+  const until = hasCustomRange ? customTo : null;
+
+  const rangeFilter = (field: "calledAt" | "createdAt" | "updatedAt") => {
+    const cond: { gte?: Date; lte?: Date } = {};
+    if (since) cond.gte = since;
+    if (until) cond.lte = until;
+    return Object.keys(cond).length > 0 ? { [field]: cond } : {};
+  };
+
+  const callsDateWhere = rangeFilter("calledAt");
+  const offersDateWhere = rangeFilter("createdAt");
+  const updatedDateWhere = rangeFilter("updatedAt");
 
   const [
     users,
@@ -248,27 +273,27 @@ export async function getKpi(period: KpiPeriod): Promise<KpiResult> {
     await Promise.all([
       db.client.count({
         where: {
-          ...(since ? { createdAt: { gte: since } } : {}),
+          ...rangeFilter("createdAt"),
           assignedToId: userFilter,
         },
       }),
       db.client.count({
         where: {
-          ...(since ? { createdAt: { gte: since } } : {}),
+          ...rangeFilter("createdAt"),
           assignedToId: userFilter,
           offers: { some: { status: { not: "DRAFT" } } },
         },
       }),
       db.offer.count({
         where: {
-          ...(since ? { createdAt: { gte: since } } : {}),
+          ...rangeFilter("createdAt"),
           createdById: userFilter,
           status: { not: "DRAFT" },
         },
       }),
       db.offer.findMany({
         where: {
-          ...(since ? { createdAt: { gte: since } } : {}),
+          ...rangeFilter("createdAt"),
           createdById: userFilter,
           status: { not: "DRAFT" },
         },
@@ -345,6 +370,7 @@ export async function getKpi(period: KpiPeriod): Promise<KpiResult> {
   return {
     period,
     since: since ? since.toISOString() : null,
+    until: until ? until.toISOString() : null,
     totals,
     managers,
   };

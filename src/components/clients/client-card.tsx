@@ -41,6 +41,8 @@ interface ClientCardProps {
 const STATUS_COLORS: Record<ClientStatus, string> = {
   NEU: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
   IN_BEARBEITUNG: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  ANGERUFEN: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+  ANGEBOT_VERSENDET: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
   VERKAUFT: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   NICHT_VERKAUFT: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
 };
@@ -48,6 +50,8 @@ const STATUS_COLORS: Record<ClientStatus, string> = {
 const STATUS_LABELS: Record<ClientStatus, string> = {
   NEU: "Neu",
   IN_BEARBEITUNG: "In Bearbeitung",
+  ANGERUFEN: "Angerufen",
+  ANGEBOT_VERSENDET: "Angebot versendet",
   VERKAUFT: "Verkauft",
   NICHT_VERKAUFT: "Nicht verkauft",
 };

@@ -12,7 +12,16 @@ export const clientSchema = z.object({
   postalCode: z.string().min(4, "PLZ ist erforderlich"),
   city: z.string().min(1, "Stadt ist erforderlich"),
   notes: z.string().optional(),
-  status: z.enum(["NEU", "IN_BEARBEITUNG", "VERKAUFT", "NICHT_VERKAUFT"]).optional(),
+  status: z
+    .enum([
+      "NEU",
+      "IN_BEARBEITUNG",
+      "ANGERUFEN",
+      "ANGEBOT_VERSENDET",
+      "VERKAUFT",
+      "NICHT_VERKAUFT",
+    ])
+    .optional(),
   substatus: z.enum(["IN_KONTAKT", "ANGEBOT_VERSENDET", "NICHT_ERREICHBAR"]).nullable().optional(),
   dealProbability: z.enum(["NIEDRIG", "MITTEL", "HOCH"]).nullable().optional(),
   source: z.string().nullable().optional(),

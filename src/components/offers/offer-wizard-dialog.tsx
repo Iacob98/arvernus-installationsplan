@@ -1156,10 +1156,67 @@ function KfwCalculator({
   );
 }
 
+const STANDARD_RABATTE = [
+  { label: "Rabatt bei Zusage innerhalb 7 Tagen", value: 3.5 },
+  { label: "Rabatt bei Zusage innerhalb 14 Tagen", value: 1.5 },
+  { label: "Neukundenrabatt", value: 1.5 },
+] as const;
+
 function DiscountsStep({ fields, append, remove, register, setValue, totals }: DiscountsStepProps) {
+  const currentLabels = new Set(fields.map((f) => f.label));
+
+  function addPreset(label: string, value: number) {
+    if (currentLabels.has(label)) {
+      toast.error("Bereits hinzugefügt");
+      return;
+    }
+    append({
+      label,
+      description: "",
+      kind: "PERCENT",
+      value,
+      order: fields.length,
+    });
+  }
+
   return (
     <div className="space-y-4">
       <KfwCalculator setValue={setValue} />
+
+      <Card className="border-primary/30 bg-primary/[0.02]">
+        <CardHeader>
+          <CardTitle className="text-base">Standard-Rabatte</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Ein Klick fügt einen typischen Rabatt hinzu — Werte sind anschließend editierbar.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {STANDARD_RABATTE.map((r) => {
+              const added = currentLabels.has(r.label);
+              return (
+                <button
+                  key={r.label}
+                  type="button"
+                  disabled={added}
+                  onClick={() => addPreset(r.label, r.value)}
+                  className={`text-left rounded-md border bg-card p-3 transition-colors ${
+                    added
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-muted/40 cursor-pointer"
+                  }`}
+                >
+                  <div className="text-sm font-medium">
+                    {added ? "✓ " : ""}
+                    {r.label}
+                  </div>
+                  <div className="text-xs text-primary mt-1">+{r.value} %</div>
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

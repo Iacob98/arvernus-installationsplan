@@ -33,6 +33,23 @@ export async function createCallLog(clientId: string, data: CreateCallLogData) {
       reminderId = reminder.id;
     }
 
+    // Auto-advance pipeline: erster erfolgreicher Anruf hebt NEU/IN_BEARBEITUNG auf ANGERUFEN
+    if (validated.outcome === "REACHED") {
+      const current = await tx.client.findUnique({
+        where: { id: clientId },
+        select: { status: true },
+      });
+      if (
+        current &&
+        (current.status === "NEU" || current.status === "IN_BEARBEITUNG")
+      ) {
+        await tx.client.update({
+          where: { id: clientId },
+          data: { status: "ANGERUFEN" },
+        });
+      }
+    }
+
     return tx.callLog.create({
       data: {
         clientId,

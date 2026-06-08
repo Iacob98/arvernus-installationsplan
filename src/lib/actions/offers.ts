@@ -373,6 +373,23 @@ export async function sendOffer(offerId: string, data: SendOfferData) {
         emailBody: validated.body,
       },
     });
+
+    // Auto-advance Client pipeline: höchstens bis ANGEBOT_VERSENDET
+    const client = await db.client.findUnique({
+      where: { id: offer.clientId },
+      select: { status: true },
+    });
+    if (
+      client &&
+      (client.status === "NEU" ||
+        client.status === "IN_BEARBEITUNG" ||
+        client.status === "ANGERUFEN")
+    ) {
+      await db.client.update({
+        where: { id: offer.clientId },
+        data: { status: "ANGEBOT_VERSENDET" },
+      });
+    }
   } catch (e) {
     await db.emailLog.update({
       where: { id: emailLog.id },

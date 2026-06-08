@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 const STATUS_LABELS: Record<ClientStatus, string> = {
   NEU: "Neu",
   IN_BEARBEITUNG: "In Bearbeitung",
+  ANGERUFEN: "Angerufen",
+  ANGEBOT_VERSENDET: "Angebot versendet",
   VERKAUFT: "Verkauft",
   NICHT_VERKAUFT: "Nicht verkauft",
 };
