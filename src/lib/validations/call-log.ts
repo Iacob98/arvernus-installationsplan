@@ -9,6 +9,7 @@ export const createCallLogSchema = z
     outcome: callOutcomeSchema,
     notes: z.string().nullable().optional(),
     nextCallAt: z.coerce.date().nullable().optional(),
+    reminderDescription: z.string().nullable().optional(),
   })
   .refine((d) => d.outcome === "REACHED" || d.nextCallAt, {
     message: "Rückruf-Termin ist erforderlich, wenn nicht erreicht",

@@ -9,9 +9,14 @@ import { toast } from "sonner";
 interface NewClientFormProps {
   users?: { id: string; name: string }[];
   isAdmin?: boolean;
+  defaultCustomerNumber: string;
 }
 
-export function NewClientForm({ users, isAdmin }: NewClientFormProps) {
+export function NewClientForm({
+  users,
+  isAdmin,
+  defaultCustomerNumber,
+}: NewClientFormProps) {
   const router = useRouter();
 
   async function onSubmit(data: ClientFormData) {
@@ -23,7 +28,7 @@ export function NewClientForm({ users, isAdmin }: NewClientFormProps) {
   return (
     <ClientForm
       defaultValues={{
-        customerNumber: `KD-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+        customerNumber: defaultCustomerNumber,
         status: "NEU",
       }}
       onSubmit={onSubmit}

@@ -51,7 +51,7 @@ import {
   calcHeizlast,
   type BaujahrChip,
 } from "@/lib/heizlast";
-import { OFFER_TEMPLATES, resolveTemplate } from "@/lib/offer-templates";
+import { resolveTemplate, type OfferTemplate } from "@/lib/offer-templates";
 import {
   SERVICE_PRESETS,
   defaultServiceLines,
@@ -112,6 +112,7 @@ interface Props {
   clientName: string;
   inquiry: ClientInquiry;
   catalog: CatalogItemForClient[];
+  offerTemplates: OfferTemplate[];
 }
 
 export function OfferWizardDialog({
@@ -121,6 +122,7 @@ export function OfferWizardDialog({
   clientName,
   inquiry,
   catalog,
+  offerTemplates,
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -130,6 +132,7 @@ export function OfferWizardDialog({
           clientName={clientName}
           inquiry={inquiry}
           catalog={catalog}
+          offerTemplates={offerTemplates}
           onClose={() => onOpenChange(false)}
         />
       )}
@@ -142,6 +145,7 @@ interface ContentProps {
   clientName: string;
   inquiry: ClientInquiry;
   catalog: CatalogItemForClient[];
+  offerTemplates: OfferTemplate[];
   onClose: () => void;
 }
 
@@ -150,6 +154,7 @@ function OfferWizardContent({
   clientName,
   inquiry,
   catalog,
+  offerTemplates,
   onClose,
 }: ContentProps) {
   const router = useRouter();
@@ -312,6 +317,7 @@ function OfferWizardContent({
           {step === 1 && (
             <PositionsStep
               catalog={catalog}
+              templates={offerTemplates}
               fields={positions.fields}
               append={positions.append}
               remove={positions.remove}
@@ -711,6 +717,7 @@ function InquiryChipField({
 
 interface PositionsStepProps {
   catalog: CatalogItemForClient[];
+  templates: OfferTemplate[];
   fields: ReturnType<typeof useFieldArray<CreateOfferData, "positions">>["fields"];
   append: ReturnType<typeof useFieldArray<CreateOfferData, "positions">>["append"];
   remove: ReturnType<typeof useFieldArray<CreateOfferData, "positions">>["remove"];
@@ -722,6 +729,7 @@ interface PositionsStepProps {
 
 function PositionsStep({
   catalog,
+  templates,
   fields,
   append,
   remove,
@@ -739,7 +747,7 @@ function PositionsStep({
   const selectedVariant = selectedItem?.variants.find((v) => v.id === selectedVariantId);
 
   function applyTemplate(templateId: string) {
-    const tpl = OFFER_TEMPLATES.find((t) => t.id === templateId);
+    const tpl = templates.find((t) => t.id === templateId);
     if (!tpl) return;
     const { matches, missing } = resolveTemplate(tpl, catalog);
     if (matches.length === 0) {
@@ -797,31 +805,35 @@ function PositionsStep({
 
   return (
     <div className="space-y-4">
-      <Card className="border-primary/30 bg-primary/[0.02]">
-        <CardHeader>
-          <CardTitle className="text-base">Schnellauswahl (Vorlagen)</CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            Vorgefertigte Konfigurationen für typische Häuser — spart Zeit am Telefon.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {OFFER_TEMPLATES.map((tpl) => (
-              <button
-                key={tpl.id}
-                type="button"
-                onClick={() => applyTemplate(tpl.id)}
-                className="text-left rounded-md border bg-card p-3 hover:bg-muted/40 transition-colors"
-              >
-                <div className="font-medium text-sm">{tpl.label}</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {tpl.description}
-                </div>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {templates.length > 0 && (
+        <Card className="border-primary/30 bg-primary/[0.02]">
+          <CardHeader>
+            <CardTitle className="text-base">Schnellauswahl (Vorlagen)</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Vorgefertigte Konfigurationen für typische Häuser — spart Zeit am Telefon.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {templates.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  onClick={() => applyTemplate(tpl.id)}
+                  className="text-left rounded-md border bg-card p-3 hover:bg-muted/40 transition-colors"
+                >
+                  <div className="font-medium text-sm">{tpl.label}</div>
+                  {tpl.description && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {tpl.description}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

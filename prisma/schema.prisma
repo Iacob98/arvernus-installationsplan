@@ -503,6 +503,39 @@ model ClientNote {
   @@map("client_notes")
 }
 
+model OfferTemplate {
+  id          String                   @id @default(cuid())
+  name        String
+  description String?
+  order       Int                      @default(0)
+  active      Boolean                  @default(true)
+  components  OfferTemplateComponent[]
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@map("offer_templates")
+}
+
+model OfferTemplateComponent {
+  id       String          @id @default(cuid())
+  type     CatalogItemType
+  keyword  String
+  quantity Int             @default(1)
+  label    String
+  order    Int             @default(0)
+
+  catalogItemId        String?
+  catalogItem          CatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+  catalogItemVariantId String?
+  catalogItemVariant   CatalogItemVariant? @relation(fields: [catalogItemVariantId], references: [id], onDelete: SetNull)
+
+  templateId String
+  template   OfferTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@map("offer_template_components")
+}
+
 model ClientAttachment {
   id          String @id @default(cuid())
   fileName    String
@@ -531,7 +564,8 @@ model CatalogItem {
   active       Boolean         @default(true)
   order        Int             @default(0)
 
-  variants CatalogItemVariant[]
+  variants           CatalogItemVariant[]
+  templateComponents OfferTemplateComponent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -552,6 +586,8 @@ model CatalogItemVariant {
 
   catalogItemId String
   catalogItem   CatalogItem @relation(fields: [catalogItemId], references: [id], onDelete: Cascade)
+
+  templateComponents OfferTemplateComponent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

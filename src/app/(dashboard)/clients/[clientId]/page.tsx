@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { getClient } from "@/lib/actions/clients";
 import { getActiveUsers } from "@/lib/actions/users";
 import { listActiveCatalogItems, type CatalogItemForClient } from "@/lib/actions/catalog";
+import { listActiveOfferTemplates } from "@/lib/actions/offer-templates";
+import { dbTemplateToOfferTemplate, type OfferTemplate } from "@/lib/offer-templates";
 import { serializeDecimals } from "@/lib/serialize";
 import { auth } from "@/lib/auth";
 import { isAdmin } from "@/lib/auth-utils";
@@ -23,11 +25,13 @@ export default async function ClientDetailPage({
 
   const session = await auth();
   const admin = session ? isAdmin(session) : false;
-  const [users, catalogRaw] = await Promise.all([
+  const [users, catalogRaw, templatesRaw] = await Promise.all([
     admin ? getActiveUsers() : Promise.resolve([] as { id: string; name: string }[]),
     listActiveCatalogItems(),
+    listActiveOfferTemplates(),
   ]);
   const catalog: CatalogItemForClient[] = serializeDecimals(catalogRaw);
+  const templates: OfferTemplate[] = templatesRaw.map(dbTemplateToOfferTemplate);
 
   return (
     <div className="space-y-6">
@@ -57,6 +61,7 @@ export default async function ClientDetailPage({
         users={users}
         isAdmin={admin}
         catalog={catalog}
+        offerTemplates={templates}
       />
     </div>
   );

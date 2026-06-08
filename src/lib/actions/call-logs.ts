@@ -21,12 +21,17 @@ export async function createCallLog(clientId: string, data: CreateCallLogData) {
   const callLog = await db.$transaction(async (tx) => {
     let reminderId: string | null = null;
 
-    if (validated.nextCallAt && validated.outcome !== "REACHED") {
+    if (validated.nextCallAt) {
+      const defaultDesc =
+        validated.outcome === "REACHED"
+          ? `Erinnerung · ${client.firstName} ${client.lastName}`.trim()
+          : `Rückruf · ${client.firstName} ${client.lastName}`.trim();
       const reminder = await tx.reminder.create({
         data: {
           clientId,
           date: validated.nextCallAt,
-          description: `Rückruf · ${client.firstName} ${client.lastName}`.trim(),
+          description:
+            validated.reminderDescription?.trim() || defaultDesc,
           completed: false,
         },
       });

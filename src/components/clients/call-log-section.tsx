@@ -203,18 +203,27 @@ function CallLogDialogContent({
   const [calledAt, setCalledAt] = useState(nowLocalInputValue());
   const [outcome, setOutcome] = useState<Outcome>("REACHED");
   const [notes, setNotes] = useState("");
-  const [nextCallAt, setNextCallAt] = useState(tomorrowLocalInputValue());
+  const [reminderEnabled, setReminderEnabled] = useState(false);
+  const [reminderAt, setReminderAt] = useState(tomorrowLocalInputValue());
+  const [reminderDescription, setReminderDescription] = useState("");
+
+  const reminderRequired = outcome !== "REACHED";
+  const effectivelyEnabled = reminderRequired || reminderEnabled;
 
   function submit() {
-    if (outcome !== "REACHED" && !nextCallAt) {
-      toast.error("Rückruf-Termin angeben");
+    if (effectivelyEnabled && !reminderAt) {
+      toast.error("Erinnerungstermin angeben");
       return;
     }
     const payload: CreateCallLogData = {
       calledAt: new Date(calledAt),
       outcome,
       notes: notes.trim() || null,
-      nextCallAt: outcome !== "REACHED" ? new Date(nextCallAt) : null,
+      nextCallAt: effectivelyEnabled ? new Date(reminderAt) : null,
+      reminderDescription:
+        effectivelyEnabled && reminderDescription.trim()
+          ? reminderDescription.trim()
+          : null,
     };
     startTransition(async () => {
       try {
@@ -256,19 +265,6 @@ function CallLogDialogContent({
             </SelectContent>
           </Select>
         </div>
-        {outcome !== "REACHED" && (
-          <div className="space-y-1">
-            <Label className="text-xs">Rückruf am</Label>
-            <Input
-              type="datetime-local"
-              value={nextCallAt}
-              onChange={(e) => setNextCallAt(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Wird automatisch als Erinnerung angelegt.
-            </p>
-          </div>
-        )}
         <div className="space-y-1">
           <Label className="text-xs">Notizen</Label>
           <Textarea
@@ -277,6 +273,46 @@ function CallLogDialogContent({
             onChange={(e) => setNotes(e.target.value)}
             placeholder="z. B. „Interesse vorhanden, wartet auf Konfiguration“"
           />
+        </div>
+        <div className="rounded-md border p-3 space-y-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={effectivelyEnabled}
+              disabled={reminderRequired}
+              onChange={(e) => setReminderEnabled(e.target.checked)}
+            />
+            <span className="font-medium">Erinnerung anlegen</span>
+            {reminderRequired && (
+              <span className="text-xs text-muted-foreground">
+                (Pflicht, da nicht erreicht)
+              </span>
+            )}
+          </label>
+          {effectivelyEnabled && (
+            <div className="space-y-2 pt-1">
+              <div className="space-y-1">
+                <Label className="text-xs">Termin</Label>
+                <Input
+                  type="datetime-local"
+                  value={reminderAt}
+                  onChange={(e) => setReminderAt(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Beschreibung (optional)</Label>
+                <Input
+                  value={reminderDescription}
+                  onChange={(e) => setReminderDescription(e.target.value)}
+                  placeholder={
+                    reminderRequired
+                      ? "z. B. „Rückruf nach 16 Uhr versuchen"
+                      : "z. B. „Nach Förderbescheid nachhaken“"
+                  }
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <DialogFooter>

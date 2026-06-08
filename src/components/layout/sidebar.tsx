@@ -15,6 +15,7 @@ import {
   Menu,
   Package,
   BarChart3,
+  LayoutTemplate,
 } from "lucide-react";
 import {
   Sheet,
@@ -42,6 +43,7 @@ function getNavItems(role?: string): NavItem[] {
     { href: "/users", label: "Benutzer", icon: UserCog },
     { href: "/campaigns", label: "Kampagnen", icon: Megaphone },
     { href: "/settings/catalog", label: "Katalog", icon: Package },
+    { href: "/settings/templates", label: "Vorlagen", icon: LayoutTemplate },
     { href: "/settings", label: "Einstellungen", icon: Settings },
   ];
 }

@@ -169,15 +169,47 @@ export async function getClient(id: string): Promise<ClientDetail | null> {
   return client;
 }
 
+/**
+ * Erzeugt eine sequentielle Kundennummer im Format KD-JAHR-NNNN.
+ * Pro Jahr beginnt der Zähler bei 0001.
+ */
+export async function generateCustomerNumber(year?: number): Promise<string> {
+  const y = year ?? new Date().getFullYear();
+  const prefix = `KD-${y}-`;
+  const last = await db.client.findFirst({
+    where: { customerNumber: { startsWith: prefix } },
+    orderBy: { customerNumber: "desc" },
+    select: { customerNumber: true },
+  });
+  let next = 1;
+  if (last) {
+    const num = parseInt(last.customerNumber.slice(prefix.length), 10);
+    if (!isNaN(num)) next = num + 1;
+  }
+  return `${prefix}${String(next).padStart(4, "0")}`;
+}
+
 export async function createClient(data: ClientFormData) {
   const session = await auth();
   if (!session?.user) throw new Error("Nicht authentifiziert");
 
   const validated = clientSchema.parse(data);
 
-  const client = await db.client.create({ data: validated });
-  revalidatePath("/clients");
-  return client;
+  // Bei Kollision die nächste freie Nummer wählen (mit kleinen Retries).
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const client = await db.client.create({ data: validated });
+      revalidatePath("/clients");
+      return client;
+    } catch (e) {
+      const isUniqueConflict =
+        e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
+      if (!isUniqueConflict) throw e;
+      // Vergib neue sequenzielle Nummer und versuche es erneut.
+      validated.customerNumber = await generateCustomerNumber();
+    }
+  }
+  throw new Error("Konnte keine eindeutige Kundennummer vergeben");
 }
 
 export async function updateClient(id: string, data: ClientFormData) {

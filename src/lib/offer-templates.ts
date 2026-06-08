@@ -2,14 +2,12 @@ import type { CatalogItemForClient } from "@/lib/actions/catalog";
 import type { CatalogItemType } from "@prisma/client";
 
 export type TemplateComponent = {
-  /** Тип каталога */
   type: CatalogItemType;
-  /** Подстрока в имени варианта (case-insensitive) для авто-выбора */
   keyword: string;
-  /** Сколько штук */
   quantity: number;
-  /** Удобное имя для toast/UI */
   label: string;
+  catalogItemId?: string | null;
+  catalogItemVariantId?: string | null;
 };
 
 export type OfferTemplate = {
@@ -18,6 +16,38 @@ export type OfferTemplate = {
   description: string;
   components: TemplateComponent[];
 };
+
+/**
+ * Adapter: DB-модель OfferTemplate → старая структура OfferTemplate из этого файла.
+ * Позволяет переиспользовать resolveTemplate без изменений.
+ */
+export function dbTemplateToOfferTemplate(t: {
+  id: string;
+  name: string;
+  description: string | null;
+  components: {
+    type: CatalogItemType;
+    keyword: string;
+    quantity: number;
+    label: string;
+    catalogItemId?: string | null;
+    catalogItemVariantId?: string | null;
+  }[];
+}): OfferTemplate {
+  return {
+    id: t.id,
+    label: t.name,
+    description: t.description ?? "",
+    components: t.components.map((c) => ({
+      type: c.type,
+      keyword: c.keyword,
+      quantity: c.quantity,
+      label: c.label,
+      catalogItemId: c.catalogItemId ?? null,
+      catalogItemVariantId: c.catalogItemVariantId ?? null,
+    })),
+  };
+}
 
 /**
  * Готовые конфигурации Angebote под типичные дома.
@@ -88,19 +118,42 @@ export function resolveTemplate(
   const missing: TemplateComponent[] = [];
 
   for (const comp of template.components) {
-    const itemsOfType = catalog.filter((c) => c.type === comp.type);
     let found: { item: CatalogItemForClient; variant: CatalogItemForClient["variants"][number] } | null = null;
 
-    const kwLower = comp.keyword.toLowerCase();
-    for (const item of itemsOfType) {
-      const variantHit = item.variants.find(
-        (v) =>
-          v.name.toLowerCase().includes(kwLower) ||
-          item.name.toLowerCase().includes(kwLower),
-      );
-      if (variantHit) {
-        found = { item, variant: variantHit };
-        break;
+    // 1) Direkter Variant-Verweis
+    if (comp.catalogItemVariantId) {
+      for (const item of catalog) {
+        const variant = item.variants.find(
+          (v) => v.id === comp.catalogItemVariantId,
+        );
+        if (variant) {
+          found = { item, variant };
+          break;
+        }
+      }
+    }
+
+    // 2) Item-Verweis → erster aktiver Variant
+    if (!found && comp.catalogItemId) {
+      const item = catalog.find((c) => c.id === comp.catalogItemId);
+      const variant = item?.variants[0];
+      if (item && variant) found = { item, variant };
+    }
+
+    // 3) Fallback: Typ + Suchbegriff im Variantennamen
+    if (!found && comp.keyword) {
+      const itemsOfType = catalog.filter((c) => c.type === comp.type);
+      const kwLower = comp.keyword.toLowerCase();
+      for (const item of itemsOfType) {
+        const variantHit = item.variants.find(
+          (v) =>
+            v.name.toLowerCase().includes(kwLower) ||
+            item.name.toLowerCase().includes(kwLower),
+        );
+        if (variantHit) {
+          found = { item, variant: variantHit };
+          break;
+        }
       }
     }
 

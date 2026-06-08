@@ -46,6 +46,7 @@ import { OfferSection } from "@/components/offers/offer-section";
 import { OfferWizardDialog } from "@/components/offers/offer-wizard-dialog";
 import { CallLogSection } from "./call-log-section";
 import type { CatalogItemForClient } from "@/lib/actions/catalog";
+import type { OfferTemplate } from "@/lib/offer-templates";
 import { toast } from "sonner";
 
 interface ClientDetailContentProps {
@@ -53,6 +54,7 @@ interface ClientDetailContentProps {
   users?: { id: string; name: string }[];
   isAdmin?: boolean;
   catalog: CatalogItemForClient[];
+  offerTemplates: OfferTemplate[];
 }
 
 const INQUIRY_FIELDS: { key: keyof ClientDetail; label: string }[] = [
@@ -175,7 +177,7 @@ function InquiryDetailsCard({ client }: { client: ClientDetail }) {
   );
 }
 
-export function ClientDetailContent({ client, users, isAdmin, catalog }: ClientDetailContentProps) {
+export function ClientDetailContent({ client, users, isAdmin, catalog, offerTemplates }: ClientDetailContentProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -464,6 +466,7 @@ export function ClientDetailContent({ client, users, isAdmin, catalog }: ClientD
           additionalInfo: client.additionalInfo,
         }}
         catalog={catalog}
+        offerTemplates={offerTemplates}
       />
 
       {/* Delete confirmation dialog */}
