@@ -353,8 +353,8 @@ export function ClientDetailContent({ client, users, isAdmin, catalog }: ClientD
         </Card>
       </div>
 
-      {/* Anfragedetails */}
-      <InquiryDetailsCard client={client} />
+      {/* Anrufe */}
+      <CallLogSection clientId={client.id} callLogs={client.callLogs} />
 
       {/* Angebote */}
       <OfferSection
@@ -363,11 +363,11 @@ export function ClientDetailContent({ client, users, isAdmin, catalog }: ClientD
         onNew={() => setShowOfferWizard(true)}
       />
 
-      {/* Anrufe */}
-      <CallLogSection clientId={client.id} callLogs={client.callLogs} />
-
       {/* Reminders */}
       <ReminderSection clientId={client.id} reminders={client.reminders} />
+
+      {/* Anfragedetails */}
+      <InquiryDetailsCard client={client} />
 
       {/* Notes / Verlauf */}
       <ClientNotesSection clientId={client.id} notes={client.clientNotes} />
