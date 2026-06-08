@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useEffect, useTransition, useCallback } from "react";
-import Link from "next/link";
 import { ClientStatus } from "@prisma/client";
-import { Plus, Users, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ClientCard } from "./client-card";
-import { BulkEmailDialog } from "./bulk-email-dialog";
-import { getClients, getClientCounts } from "@/lib/actions/clients";
+import { Users } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { ClientsListPane } from "./clients-list-pane";
+import { ClientDetailPanel } from "./client-detail-panel";
+import {
+  getClients,
+  getClientCounts,
+  type ClientDetail,
+} from "@/lib/actions/clients";
+import type { CatalogItemForClient } from "@/lib/actions/catalog";
+import type { OfferTemplate } from "@/lib/offer-templates";
 
 type ClientWithRelations = Awaited<ReturnType<typeof getClients>>[number];
 
@@ -27,6 +29,9 @@ interface ClientsPageContentProps {
   };
   users?: { id: string; name: string; role?: string }[];
   isAdmin?: boolean;
+  selectedClient: ClientDetail | null;
+  catalog: CatalogItemForClient[];
+  offerTemplates: OfferTemplate[];
 }
 
 export function ClientsPageContent({
@@ -34,148 +39,87 @@ export function ClientsPageContent({
   initialCounts,
   users,
   isAdmin,
+  selectedClient,
+  catalog,
+  offerTemplates,
 }: ClientsPageContentProps) {
   const [clients, setClients] = useState(initialClients);
   const [counts, setCounts] = useState(initialCounts);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [assignedFilter, setAssignedFilter] = useState("ALL");
   const [isPending, startTransition] = useTransition();
 
   const fetchClients = useCallback(
     (searchVal: string, status: string, assigned: string) => {
       startTransition(async () => {
-        const statusFilter = status === "ALL" ? undefined : (status as ClientStatus);
-        const assignedParam = assigned === "ALL" ? undefined : assigned;
+        const sFilter = status === "ALL" ? undefined : (status as ClientStatus);
+        const aParam = assigned === "ALL" ? undefined : assigned;
         const [newClients, newCounts] = await Promise.all([
-          getClients(searchVal || undefined, statusFilter, assignedParam),
-          getClientCounts(assignedParam),
+          getClients(searchVal || undefined, sFilter, aParam),
+          getClientCounts(aParam),
         ]);
         setClients(newClients);
         setCounts(newCounts);
       });
     },
-    []
+    [],
   );
 
-  // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchClients(search, activeTab, assignedFilter);
+      fetchClients(search, statusFilter, assignedFilter);
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, activeTab, assignedFilter, fetchClients]);
-
-  const tabItems = [
-    { value: "ALL", label: "Alle", count: counts.total },
-    { value: "NEU", label: "Neu", count: counts.neu },
-    { value: "IN_BEARBEITUNG", label: "In Bearb.", count: counts.inBearbeitung },
-    { value: "ANGERUFEN", label: "Angerufen", count: counts.angerufen },
-    { value: "ANGEBOT_VERSENDET", label: "Angebot vers.", count: counts.angebotVersendet },
-    { value: "VERKAUFT", label: "Verkauft", count: counts.verkauft },
-    { value: "NICHT_VERKAUFT", label: "Nicht verk.", count: counts.nichtVerkauft },
-  ];
+  }, [search, statusFilter, assignedFilter, fetchClients]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Kunden</h1>
-          <p className="text-muted-foreground">
-            {counts.total} Kunde{counts.total !== 1 ? "n" : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <BulkEmailDialog />
-          <Link href="/clients/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Neuer Kunde
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Suche nach Name, Kundennummer, Stadt..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+    <div className="flex flex-col h-[calc(100vh-6rem)] xl:h-[calc(100vh-7rem)]">
+      <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-4 flex-1 min-h-0">
+        {/* MASTER */}
+        <Card className="flex flex-col min-h-0 overflow-hidden p-0 gap-0">
+          <ClientsListPane
+            clients={clients}
+            selectedId={selectedClient?.id}
+            search={search}
+            setSearch={setSearch}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            assignedFilter={assignedFilter}
+            setAssignedFilter={setAssignedFilter}
+            users={users}
+            isAdmin={isAdmin}
+            totalCount={counts.total}
           />
-        </div>
+        </Card>
+
+        {/* DETAIL */}
+        <Card className="hidden xl:flex min-h-0 overflow-hidden p-0 gap-0 flex-col">
+          {selectedClient ? (
+            <div className="overflow-y-auto h-full">
+              <ClientDetailPanel
+                client={selectedClient}
+                catalog={catalog}
+                offerTemplates={offerTemplates}
+                variant="panel"
+                onClose={undefined}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
+              <Users className="h-12 w-12 mb-3 opacity-30" />
+              <p className="text-sm font-medium">Kunde auswählen</p>
+              <p className="text-xs mt-1 font-mono text-muted-foreground/60">
+                ↑↓ navigieren · ↵ öffnen
+              </p>
+            </div>
+          )}
+        </Card>
       </div>
-
-      {/* User filter chips (admin only) */}
-      {isAdmin && users && users.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {[
-            { value: "ALL", label: "Alle" },
-            { value: "UNASSIGNED", label: "Nicht zugewiesen" },
-            ...users.map((u) => ({ value: u.id, label: u.name })),
-          ].map((chip) => (
-            <button
-              key={chip.value}
-              onClick={() => setAssignedFilter(chip.value)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                assignedFilter === chip.value
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          {tabItems.map((tab) => (
-            <TabsTrigger key={tab.value} value={tab.value}>
-              {tab.label} ({tab.count})
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {tabItems.map((tab) => (
-          <TabsContent key={tab.value} value={tab.value}>
-            {clients.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                  <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium">Keine Kunden</h3>
-                  <p className="text-muted-foreground mb-4">
-                    {search
-                      ? "Keine Ergebnisse für die Suche"
-                      : "Erstellen Sie Ihren ersten Kunden"}
-                  </p>
-                  {!search && (
-                    <Link href="/clients/new">
-                      <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Kunde erstellen
-                      </Button>
-                    </Link>
-                  )}
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-3">
-                {clients.map((client) => (
-                  <ClientCard key={client.id} client={client} />
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
 
       {isPending && (
-        <div className="fixed bottom-4 right-4 bg-background border rounded-lg px-3 py-2 text-sm text-muted-foreground shadow-lg">
-          Laden...
+        <div className="fixed bottom-4 right-4 bg-background border rounded-lg px-3 py-2 text-xs text-muted-foreground shadow-lg">
+          Laden…
         </div>
       )}
     </div>
