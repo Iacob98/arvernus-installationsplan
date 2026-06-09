@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 
 interface ClientFormProps {
@@ -37,7 +36,6 @@ export function ClientForm({ defaultValues, onSubmit, submitLabel, loadingLabel,
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
@@ -47,8 +45,6 @@ export function ClientForm({ defaultValues, onSubmit, submitLabel, loadingLabel,
       ...defaultValues,
     },
   });
-
-  const status = watch("status");
 
   async function handleFormSubmit(data: ClientFormData) {
     setLoading(true);
@@ -156,84 +152,24 @@ export function ClientForm({ defaultValues, onSubmit, submitLabel, loadingLabel,
           <CardTitle>Status & Pipeline</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                defaultValue={defaultValues?.status || "NEU"}
-                onValueChange={(v) => {
-                  setValue("status", v as ClientFormData["status"]);
-                  if (v !== "IN_BEARBEITUNG") {
-                    setValue("substatus", null);
-                    setValue("dealProbability", null);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NEU">Neu</SelectItem>
-                  <SelectItem value="IN_BEARBEITUNG">In Bearbeitung</SelectItem>
-                  <SelectItem value="ANGERUFEN">Angerufen</SelectItem>
-                  <SelectItem value="ANGEBOT_VERSENDET">Angebot versendet</SelectItem>
-                  <SelectItem value="VERKAUFT">Verkauft</SelectItem>
-                  <SelectItem value="NICHT_VERKAUFT">Nicht verkauft</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {status === "IN_BEARBEITUNG" && (
-              <div className="space-y-2">
-                <Label>Unterstatus</Label>
-                <Select
-                  defaultValue={defaultValues?.substatus || "IN_KONTAKT"}
-                  onValueChange={(v) =>
-                    setValue("substatus", v as ClientFormData["substatus"])
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="IN_KONTAKT">In Kontakt</SelectItem>
-                    <SelectItem value="ANGEBOT_VERSENDET">Angebot versendet</SelectItem>
-                    <SelectItem value="NICHT_ERREICHBAR">Nicht erreichbar</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select
+              defaultValue={defaultValues?.status || "NEU"}
+              onValueChange={(v) => setValue("status", v as ClientFormData["status"])}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NEU">Neu</SelectItem>
+                <SelectItem value="ANGERUFEN">Angerufen</SelectItem>
+                <SelectItem value="ANGEBOT_VERSENDET">Angebot versendet</SelectItem>
+                <SelectItem value="VERKAUFT">Verkauft</SelectItem>
+                <SelectItem value="NICHT_VERKAUFT">Nicht verkauft</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          {status === "IN_BEARBEITUNG" && (
-            <div className="space-y-2">
-              <Label>Wahrscheinlichkeit</Label>
-              <RadioGroup
-                defaultValue={defaultValues?.dealProbability || undefined}
-                className="flex gap-4"
-                onValueChange={(v) =>
-                  setValue("dealProbability", v as ClientFormData["dealProbability"])
-                }
-              >
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="NIEDRIG" id="prob-low" />
-                  <Label htmlFor="prob-low" className="text-sm text-red-500 cursor-pointer">
-                    Niedrig
-                  </Label>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="MITTEL" id="prob-mid" />
-                  <Label htmlFor="prob-mid" className="text-sm text-yellow-500 cursor-pointer">
-                    Mittel
-                  </Label>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <RadioGroupItem value="HOCH" id="prob-high" />
-                  <Label htmlFor="prob-high" className="text-sm text-green-500 cursor-pointer">
-                    Hoch
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-          )}
           {isAdmin && users && users.length > 0 && (
             <div className="space-y-2">
               <Label>Zugewiesen an</Label>

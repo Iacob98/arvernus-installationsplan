@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   Trash2,
   Send,
+  Handshake,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +34,7 @@ import { EmailLogSection } from "./email-log-section";
 import {
   createClientNote,
   deleteClient,
+  markClientImKontakt,
   type ClientDetail,
 } from "@/lib/actions/clients";
 import type { CatalogItemForClient } from "@/lib/actions/catalog";
@@ -40,18 +42,18 @@ import type { OfferTemplate } from "@/lib/offer-templates";
 
 const STATUS_COLORS: Record<ClientStatus, string> = {
   NEU: "#8b5cf6",
-  IN_BEARBEITUNG: "#0284c7",
   ANGERUFEN: "#06b6d4",
   ANGEBOT_VERSENDET: "#d97706",
+  IM_KONTAKT: "#7c3aed",
   VERKAUFT: "#059669",
   NICHT_VERKAUFT: "#52525b",
 };
 
 const STATUS_LABELS: Record<ClientStatus, string> = {
   NEU: "Neu",
-  IN_BEARBEITUNG: "In Bearbeitung",
   ANGERUFEN: "Angerufen",
   ANGEBOT_VERSENDET: "Angebot versendet",
+  IM_KONTAKT: "In Kontakt",
   VERKAUFT: "Verkauft",
   NICHT_VERKAUFT: "Verloren",
 };
@@ -188,6 +190,32 @@ export function ClientDetailWorkspace({
               <FileText className="h-4 w-4 mr-2" />
               Angebot erstellen
             </Button>
+            {client.status === "ANGEBOT_VERSENDET" &&
+              client.offers.some((o) => o.status === "SENT") && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full h-11 justify-start font-medium bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/30 dark:hover:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-900"
+                  onClick={() => {
+                    startTransition(async () => {
+                      try {
+                        await markClientImKontakt(client.id);
+                        toast.success("Kunde ist nun In Kontakt");
+                        router.refresh();
+                      } catch (e) {
+                        toast.error(
+                          e instanceof Error
+                            ? e.message
+                            : "Fehler beim Statuswechsel",
+                        );
+                      }
+                    });
+                  }}
+                >
+                  <Handshake className="h-4 w-4 mr-2" />
+                  In Kontakt setzen
+                </Button>
+              )}
           </div>
 
           <div className="space-y-2">

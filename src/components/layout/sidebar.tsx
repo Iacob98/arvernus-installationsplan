@@ -38,7 +38,6 @@ function getNavItems(role?: string): NavItem[] {
 
   return [
     { href: "/kpi", label: "KPI", icon: BarChart3 },
-    { href: "/projects", label: "Projekte", icon: FolderOpen },
     { href: "/clients", label: "Kunden", icon: Users },
     { href: "/users", label: "Benutzer", icon: UserCog },
     { href: "/campaigns", label: "Kampagnen", icon: Megaphone },
@@ -84,7 +83,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 function LogoBlock() {
   return (
     <div className="p-4 border-b">
-      <Link href="/projects" className="flex items-center gap-2">
+      <Link href="/clients" className="flex items-center gap-2">
         <Image
           src={logoImg}
           alt="Arvernus Meisterbetrieb"

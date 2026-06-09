@@ -56,27 +56,27 @@ export type KanbanClient = {
 
 const STATUS_ORDER: ClientStatus[] = [
   "NEU",
-  "IN_BEARBEITUNG",
   "ANGERUFEN",
   "ANGEBOT_VERSENDET",
+  "IM_KONTAKT",
   "VERKAUFT",
   "NICHT_VERKAUFT",
 ];
 
 const STATUS_LABELS: Record<ClientStatus, string> = {
   NEU: "Neu",
-  IN_BEARBEITUNG: "In Bearbeitung",
   ANGERUFEN: "Angerufen",
   ANGEBOT_VERSENDET: "Angebot versendet",
+  IM_KONTAKT: "In Kontakt",
   VERKAUFT: "Verkauft",
   NICHT_VERKAUFT: "Verloren",
 };
 
 const STATUS_COLORS: Record<ClientStatus, string> = {
   NEU: "#8b5cf6",
-  IN_BEARBEITUNG: "#0284c7",
   ANGERUFEN: "#06b6d4",
   ANGEBOT_VERSENDET: "#d97706",
+  IM_KONTAKT: "#7c3aed",
   VERKAUFT: "#059669",
   NICHT_VERKAUFT: "#52525b",
 };
@@ -107,9 +107,9 @@ export function ClientsKanbanBoard({
   const grouped = useMemo(() => {
     const g: Record<ClientStatus, KanbanClient[]> = {
       NEU: [],
-      IN_BEARBEITUNG: [],
       ANGERUFEN: [],
       ANGEBOT_VERSENDET: [],
+      IM_KONTAKT: [],
       VERKAUFT: [],
       NICHT_VERKAUFT: [],
     };

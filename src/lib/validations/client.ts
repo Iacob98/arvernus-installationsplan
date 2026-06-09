@@ -15,15 +15,13 @@ export const clientSchema = z.object({
   status: z
     .enum([
       "NEU",
-      "IN_BEARBEITUNG",
       "ANGERUFEN",
       "ANGEBOT_VERSENDET",
+      "IM_KONTAKT",
       "VERKAUFT",
       "NICHT_VERKAUFT",
     ])
     .optional(),
-  substatus: z.enum(["IN_KONTAKT", "ANGEBOT_VERSENDET", "NICHT_ERREICHBAR"]).nullable().optional(),
-  dealProbability: z.enum(["NIEDRIG", "MITTEL", "HOCH"]).nullable().optional(),
   source: z.string().nullable().optional(),
   assignedToId: z.string().nullable().optional(),
   ownership: z.string().nullable().optional(),

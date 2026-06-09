@@ -73,6 +73,7 @@ export function CatalogItemDialog({ open, onOpenChange, item }: Props) {
           description: "",
           price: 0,
           technicalData: [],
+          nennleistungKw: null,
           active: true,
           order: 0,
         },
@@ -101,6 +102,7 @@ export function CatalogItemDialog({ open, onOpenChange, item }: Props) {
             technicalData: Array.isArray(v.technicalData)
               ? (v.technicalData as { key: string; value: string }[])
               : [],
+            nennleistungKw: v.nennleistungKw ?? null,
             active: v.active,
             order: v.order,
           })),
@@ -201,6 +203,7 @@ export function CatalogItemDialog({ open, onOpenChange, item }: Props) {
                     description: "",
                     price: 0,
                     technicalData: [],
+                    nennleistungKw: null,
                     active: true,
                     order: variants.fields.length,
                   })
@@ -294,7 +297,7 @@ function VariantBlock({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px] gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px_140px] gap-4">
         <div className="space-y-2">
           <Label>Bezeichnung</Label>
           <Input {...register(`variants.${idx}.name`)} placeholder="z. B. AW 12 OR-S" />
@@ -305,6 +308,18 @@ function VariantBlock({
             type="number"
             step="0.01"
             {...register(`variants.${idx}.price`, { valueAsNumber: true })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Leistung (kW)</Label>
+          <Input
+            type="number"
+            step="0.5"
+            placeholder="—"
+            {...register(`variants.${idx}.nennleistungKw`, {
+              setValueAs: (v) =>
+                v === "" || v === null || v === undefined ? null : Number(v),
+            })}
           />
         </div>
       </div>

@@ -1,11 +1,17 @@
 import { Worker, Job } from "bullmq";
 import { render } from "@react-email/render";
 import { db } from "@/lib/db";
-import { redis, EmailJobData, CampaignEmailJobData } from "@/lib/queue";
+import {
+  redis,
+  EmailJobData,
+  CampaignEmailJobData,
+  OfferReminderJobData,
+} from "@/lib/queue";
 import { smtpTransporter } from "./smtp";
 import { getLogoBase64 } from "@/lib/pdf/logo";
 import { getFileBuffer } from "@/lib/storage";
 import { BrandedEmail } from "./template";
+import { processOfferReminderJob } from "./offer-reminder-worker";
 
 async function processCampaignEmailJob(
   job: Job<CampaignEmailJobData>
@@ -73,9 +79,17 @@ async function processCampaignEmailJob(
   }
 }
 
-async function processEmailJob(job: Job<EmailJobData | CampaignEmailJobData>) {
+type AnyEmailJobData =
+  | EmailJobData
+  | CampaignEmailJobData
+  | OfferReminderJobData;
+
+async function processEmailJob(job: Job<AnyEmailJobData>) {
   if ("type" in job.data && job.data.type === "campaign") {
     return processCampaignEmailJob(job as Job<CampaignEmailJobData>);
+  }
+  if ("type" in job.data && job.data.type === "offer-reminder") {
+    return processOfferReminderJob(job as Job<OfferReminderJobData>);
   }
 
   const { emailLogId, to, subject, body } = job.data as EmailJobData;
@@ -163,8 +177,21 @@ export function startEmailWorker() {
     console.log(`Email job ${job.id} completed`);
   });
 
-  worker.on("failed", (job, err) => {
+  worker.on("failed", async (job, err) => {
     console.error(`Email job ${job?.id} failed:`, err.message);
+    if (!job) return;
+    const data = job.data as AnyEmailJobData | undefined;
+    if (data && "type" in data && data.type === "offer-reminder") {
+      const attempts = job.opts.attempts ?? 3;
+      if (job.attemptsMade >= attempts) {
+        await db.offerReminder
+          .update({
+            where: { id: data.reminderId },
+            data: { status: "FAILED", skippedReason: err.message },
+          })
+          .catch(() => {});
+      }
+    }
   });
 
   return worker;

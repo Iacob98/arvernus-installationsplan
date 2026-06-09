@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -207,6 +207,17 @@ function OfferWizardContent({
   const watchedPositionsRaw = useWatch({ control, name: "positions" });
   const watchedDiscountsRaw = useWatch({ control, name: "discounts" });
   const watchedServicesRaw = useWatch({ control, name: "services" });
+
+  // Sync inquiry.annualKwhGas → heatBalance.annualConsumptionKwh whenever the
+  // user edits the Anfragedaten field, so step 4 (Wärmehaushalt) reflects the
+  // current value without manual re-entry.
+  const watchedAnnualKwhGas = useWatch({ control, name: "inquiry.annualKwhGas" });
+  useEffect(() => {
+    const parsed = extractKwhFromText(watchedAnnualKwhGas);
+    if (parsed > 0) {
+      setValue("heatBalance.annualConsumptionKwh", parsed, { shouldDirty: true });
+    }
+  }, [watchedAnnualKwhGas, setValue]);
   const watchedPositions = useMemo(
     () => watchedPositionsRaw ?? [],
     [watchedPositionsRaw],
@@ -275,6 +286,24 @@ function OfferWizardContent({
   }
 
   function nextStep() {
+    if (step === 0) {
+      const inquiry = getValues("inquiry") ?? {};
+      const missing: string[] = [];
+      for (const f of INQUIRY_FIELDS) {
+        const v = (inquiry as Record<string, unknown>)[f.key];
+        if (v == null || v === "" || (typeof v === "string" && !v.trim())) {
+          missing.push(f.label);
+        }
+      }
+      if (missing.length > 0) {
+        toast.error(
+          `Bitte alle Felder ausfüllen: ${missing.slice(0, 3).join(", ")}${
+            missing.length > 3 ? ` und ${missing.length - 3} weitere` : ""
+          }`,
+        );
+        return;
+      }
+    }
     if (step === 1) {
       const hasService = watchedServices.some(
         (s) => s.enabled && (s.quantity ?? 0) > 0,
@@ -744,9 +773,60 @@ function PositionsStep({
   const [selectedVariantId, setSelectedVariantId] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [showCustom, setShowCustom] = useState(false);
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
+  const [showAllVariants, setShowAllVariants] = useState(false);
 
   const selectedItem = catalog.find((c) => c.id === selectedItemId);
   const selectedVariant = selectedItem?.variants.find((v) => v.id === selectedVariantId);
+
+  const inquiry = useWatch({ control, name: "inquiry" });
+  const recommendedKw = useMemo(() => {
+    const inq = inquiry ?? {};
+    const baujahr = (inq.constructionYear as BaujahrChip) || null;
+    const valid = baujahr && BAUJAHR_CHIPS.includes(baujahr as BaujahrChip);
+    const wohn = Number(inq.wohnflaecheM2) || 0;
+    const verbrauch = Number(inq.annualKwhGas) || 0;
+    const personen = Number(inq.householdSize) || 0;
+    if (!wohn && !verbrauch) return null;
+    const r = calcHeizlast({
+      wohnflaecheM2: wohn,
+      baujahr: valid ? (baujahr as BaujahrChip) : null,
+      jahresverbrauchKwh: verbrauch,
+      personen,
+    });
+    return r.empfohleneWpKw || null;
+  }, [inquiry]);
+
+  function kwMatches(kw: number | null | undefined): boolean {
+    if (recommendedKw == null || kw == null) return false;
+    return kw >= recommendedKw - 1 && kw <= recommendedKw + 2;
+  }
+
+  const templatesWithKw = useMemo(() => {
+    return templates.map((tpl) => {
+      const { matches } = resolveTemplate(tpl, catalog);
+      const wp = matches.find((m) => m.catalogItem.type === "WAERMEPUMPE");
+      const tplKw = wp?.variant.nennleistungKw ?? null;
+      return { tpl, tplKw };
+    });
+  }, [templates, catalog]);
+
+  const recommendedTemplates =
+    recommendedKw == null
+      ? templatesWithKw
+      : templatesWithKw.filter(({ tplKw }) => kwMatches(tplKw));
+  const otherTemplates =
+    recommendedKw == null
+      ? []
+      : templatesWithKw.filter(({ tplKw }) => !kwMatches(tplKw));
+
+  const filterVariantsByKw =
+    selectedItem?.type === "WAERMEPUMPE" && recommendedKw != null && !showAllVariants;
+  const variantsToShow = selectedItem
+    ? filterVariantsByKw
+      ? selectedItem.variants.filter((v) => kwMatches(v.nennleistungKw))
+      : selectedItem.variants
+    : [];
 
   function applyTemplate(templateId: string) {
     const tpl = templates.find((t) => t.id === templateId);
@@ -812,19 +892,34 @@ function PositionsStep({
           <CardHeader>
             <CardTitle className="text-base">Schnellauswahl (Vorlagen)</CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
-              Vorgefertigte Konfigurationen für typische Häuser — spart Zeit am Telefon.
+              {recommendedKw != null
+                ? `Passend zur empfohlenen Leistung ≈ ${recommendedKw} kW.`
+                : "Vorgefertigte Konfigurationen für typische Häuser."}
             </p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {recommendedTemplates.length === 0 && recommendedKw != null && (
+              <p className="text-xs text-muted-foreground">
+                Keine Vorlage passt zu {recommendedKw} kW. Wählen Sie manuell aus
+                den weiteren Vorlagen.
+              </p>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {templates.map((tpl) => (
+              {recommendedTemplates.map(({ tpl, tplKw }) => (
                 <button
                   key={tpl.id}
                   type="button"
                   onClick={() => applyTemplate(tpl.id)}
                   className="text-left rounded-md border bg-card p-3 hover:bg-muted/40 transition-colors"
                 >
-                  <div className="font-medium text-sm">{tpl.label}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium text-sm">{tpl.label}</div>
+                    {tplKw != null && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        {tplKw} kW
+                      </Badge>
+                    )}
+                  </div>
                   {tpl.description && (
                     <div className="text-xs text-muted-foreground mt-1">
                       {tpl.description}
@@ -833,6 +928,46 @@ function PositionsStep({
                 </button>
               ))}
             </div>
+            {otherTemplates.length > 0 && (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAllTemplates((s) => !s)}
+                >
+                  {showAllTemplates
+                    ? "Weitere verbergen"
+                    : `Weitere anzeigen (${otherTemplates.length})`}
+                </Button>
+                {showAllTemplates && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 opacity-80">
+                    {otherTemplates.map(({ tpl, tplKw }) => (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => applyTemplate(tpl.id)}
+                        className="text-left rounded-md border bg-card p-3 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-medium text-sm">{tpl.label}</div>
+                          {tplKw != null && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {tplKw} kW
+                            </Badge>
+                          )}
+                        </div>
+                        {tpl.description && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {tpl.description}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
       )}
@@ -875,13 +1010,27 @@ function PositionsStep({
                   <SelectValue placeholder="Wählen…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {selectedItem?.variants.map((v) => (
+                  {variantsToShow.map((v) => (
                     <SelectItem key={v.id} value={v.id}>
-                      {v.name} — {fmtEUR(v.price)}
+                      {v.name}
+                      {v.nennleistungKw != null ? ` · ${v.nennleistungKw} kW` : ""}
+                      {" — "}
+                      {fmtEUR(v.price)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {selectedItem?.type === "WAERMEPUMPE" && recommendedKw != null && (
+                <button
+                  type="button"
+                  className="text-[10px] text-muted-foreground hover:underline"
+                  onClick={() => setShowAllVariants((s) => !s)}
+                >
+                  {showAllVariants
+                    ? `Nur passend zu ${recommendedKw} kW`
+                    : `Alle anzeigen (${selectedItem.variants.length})`}
+                </button>
+              )}
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Menge</Label>

@@ -18,6 +18,10 @@ import { Prisma } from "@prisma/client";
 import { render } from "@react-email/render";
 import { BrandedEmail } from "@/lib/email/template";
 import { getLogoBase64 } from "@/lib/pdf/logo";
+import {
+  scheduleOfferReminders,
+  cancelOfferReminders,
+} from "./offer-reminders";
 import { DEFAULT_COMPANY } from "@/lib/pdf/shared";
 
 const offerListInclude = {
@@ -386,15 +390,15 @@ export async function sendOffer(offerId: string, data: SendOfferData) {
     });
     if (
       client &&
-      (client.status === "NEU" ||
-        client.status === "IN_BEARBEITUNG" ||
-        client.status === "ANGERUFEN")
+      (client.status === "NEU" || client.status === "ANGERUFEN")
     ) {
       await db.client.update({
         where: { id: offer.clientId },
         data: { status: "ANGEBOT_VERSENDET" },
       });
     }
+
+    await scheduleOfferReminders(offerId);
   } catch (e) {
     await db.emailLog.update({
       where: { id: emailLog.id },
@@ -419,6 +423,7 @@ export async function deleteOffer(offerId: string) {
     throw new Error("Nur Entwürfe können gelöscht werden");
   }
 
+  await cancelOfferReminders(offerId);
   await db.offer.delete({ where: { id: offerId } });
 
   if (offer.pdfStoragePath) {

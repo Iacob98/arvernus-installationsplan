@@ -81,6 +81,29 @@ export async function addCampaignEmailJob(data: CampaignEmailJobData) {
   });
 }
 
+// Offer reminder (delayed)
+export type OfferReminderJobData = {
+  type: "offer-reminder";
+  reminderId: string;
+};
+
+export async function scheduleOfferReminderJob(
+  reminderId: string,
+  jobId: string,
+  delayMs: number,
+) {
+  return emailQueue.add(
+    "send-offer-reminder",
+    { type: "offer-reminder", reminderId } satisfies OfferReminderJobData,
+    { delay: delayMs, jobId, priority: 3 },
+  );
+}
+
+export async function removeOfferReminderJob(jobId: string) {
+  const job = await emailQueue.getJob(jobId);
+  if (job) await job.remove();
+}
+
 // IMAP queue
 export type ImapJobData = {
   triggeredAt: string;

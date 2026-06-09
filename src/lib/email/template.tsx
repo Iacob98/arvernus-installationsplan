@@ -9,10 +9,12 @@ import {
   Link,
   Hr,
 } from "@react-email/components";
+import { render } from "@react-email/render";
 
 interface BrandedEmailProps {
   subject: string;
   body: string;
+  logoSrc?: string;
   company: {
     name: string;
     street: string;
@@ -49,7 +51,40 @@ function bodyToParagraphs(text: string) {
   });
 }
 
-export function BrandedEmail({ body, company }: BrandedEmailProps) {
+const RAW_HTML_SENTINEL = "###__BRANDED_RAW_HTML_BODY__###";
+
+/**
+ * Renders the BrandedEmail wrapper (header, logo, footer) and substitutes
+ * raw HTML into the body region. The wrapping <Text> paragraph that holds
+ * the sentinel is replaced entirely so the caller's HTML is not nested
+ * inside a <p> tag.
+ *
+ * Inputs are server-rendered into a static email HTML string; the result is
+ * sent via SMTP, never injected into the CRM DOM. Templates are edited only
+ * by ADMIN users via the protected server action.
+ */
+export async function renderBrandedHtmlEmail(opts: {
+  subject: string;
+  htmlBody: string;
+  logoSrc?: string;
+  company: BrandedEmailProps["company"];
+}): Promise<string> {
+  const wrapped = await render(
+    BrandedEmail({
+      subject: opts.subject,
+      body: RAW_HTML_SENTINEL,
+      logoSrc: opts.logoSrc,
+      company: opts.company,
+    }),
+  );
+  return wrapped.replace(
+    new RegExp(`<p[^>]*>\\s*<span[^>]*>\\s*${RAW_HTML_SENTINEL}\\s*</span>\\s*</p>`, "i"),
+    opts.htmlBody,
+  );
+}
+
+export function BrandedEmail({ body, logoSrc, company }: BrandedEmailProps) {
+  const finalLogoSrc = logoSrc ?? "cid:logo";
   const footerLines: string[] = [
     company.name,
     `${company.street}, ${company.postalCode} ${company.city}`,
@@ -77,10 +112,15 @@ export function BrandedEmail({ body, company }: BrandedEmailProps) {
             }}
           >
             <Img
-              src="cid:logo"
+              src={finalLogoSrc}
               alt={company.name}
               height="48"
-              style={{ height: "48px", width: "auto" }}
+              style={{
+                height: "48px",
+                width: "auto",
+                margin: "0 auto",
+                filter: "brightness(0) invert(1)",
+              }}
             />
           </Section>
 

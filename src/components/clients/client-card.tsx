@@ -5,7 +5,7 @@ import { startOfDay } from "date-fns";
 import { Bell, Flame } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ClientStatus, ClientSubstatus, DealProbability } from "@prisma/client";
+import { ClientStatus } from "@prisma/client";
 import { calcLeadScore } from "@/lib/lead-scoring";
 
 interface ClientCardProps {
@@ -20,8 +20,6 @@ interface ClientCardProps {
     postalCode: string;
     city: string;
     status: ClientStatus;
-    substatus: ClientSubstatus | null;
-    dealProbability: DealProbability | null;
     source: string | null;
     unsubscribed: boolean;
     _count: { projects: number };
@@ -40,32 +38,20 @@ interface ClientCardProps {
 
 const STATUS_COLORS: Record<ClientStatus, string> = {
   NEU: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  IN_BEARBEITUNG: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   ANGERUFEN: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
   ANGEBOT_VERSENDET: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  IM_KONTAKT: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
   VERKAUFT: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   NICHT_VERKAUFT: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
 };
 
 const STATUS_LABELS: Record<ClientStatus, string> = {
   NEU: "Neu",
-  IN_BEARBEITUNG: "In Bearbeitung",
   ANGERUFEN: "Angerufen",
   ANGEBOT_VERSENDET: "Angebot versendet",
+  IM_KONTAKT: "In Kontakt",
   VERKAUFT: "Verkauft",
   NICHT_VERKAUFT: "Nicht verkauft",
-};
-
-const SUBSTATUS_LABELS: Record<ClientSubstatus, string> = {
-  IN_KONTAKT: "In Kontakt",
-  ANGEBOT_VERSENDET: "Angebot versendet",
-  NICHT_ERREICHBAR: "Nicht erreichbar",
-};
-
-const PROBABILITY_DOTS: Record<DealProbability, string> = {
-  NIEDRIG: "bg-red-500",
-  MITTEL: "bg-yellow-500",
-  HOCH: "bg-green-500",
 };
 
 export function ClientCard({ client }: ClientCardProps) {
@@ -163,16 +149,6 @@ export function ClientCard({ client }: ClientCardProps) {
             {client.assignedTo && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                 {client.assignedTo.name}
-              </Badge>
-            )}
-            {client.dealProbability && (
-              <span
-                className={`h-2 w-2 rounded-full ${PROBABILITY_DOTS[client.dealProbability]}`}
-              />
-            )}
-            {client.substatus && (
-              <Badge variant="outline" className="text-xs">
-                {SUBSTATUS_LABELS[client.substatus]}
               </Badge>
             )}
             <Badge className={`text-xs ${STATUS_COLORS[client.status]}`}>

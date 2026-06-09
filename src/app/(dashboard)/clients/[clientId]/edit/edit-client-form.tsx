@@ -36,8 +36,6 @@ export function EditClientForm({ client, users, isAdmin }: EditClientFormProps) 
         city: client.city,
         notes: client.notes || "",
         status: client.status,
-        substatus: client.substatus,
-        dealProbability: client.dealProbability,
         source: client.source,
         assignedToId: client.assignedToId,
       }}

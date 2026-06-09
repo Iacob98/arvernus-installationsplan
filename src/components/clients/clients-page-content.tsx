@@ -15,9 +15,9 @@ interface ClientsPageContentProps {
   initialCounts: {
     total: number;
     neu: number;
-    inBearbeitung: number;
     angerufen: number;
     angebotVersendet: number;
+    imKontakt: number;
     verkauft: number;
     nichtVerkauft: number;
   };

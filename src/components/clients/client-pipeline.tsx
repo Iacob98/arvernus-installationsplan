@@ -5,9 +5,9 @@ import { Check } from "lucide-react";
 
 const STAGES: { value: ClientStatus; label: string }[] = [
   { value: "NEU", label: "Neu" },
-  { value: "IN_BEARBEITUNG", label: "In Bearbeitung" },
   { value: "ANGERUFEN", label: "Angerufen" },
   { value: "ANGEBOT_VERSENDET", label: "Angebot" },
+  { value: "IM_KONTAKT", label: "In Kontakt" },
   { value: "VERKAUFT", label: "Verkauft" },
 ];
 

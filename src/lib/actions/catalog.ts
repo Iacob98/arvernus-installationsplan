@@ -76,6 +76,7 @@ export async function createCatalogItem(data: CatalogItemFormData) {
           photoStoragePath: v.photoStoragePath ?? null,
           price: v.price,
           technicalData: v.technicalData,
+          nennleistungKw: v.nennleistungKw ?? null,
           active: v.active,
           order: v.order || idx,
         })),

@@ -344,7 +344,6 @@ async function processImapJob(job: Job<ImapJobData>) {
               city: contact.city || "-",
               notes: contact.message || "",
               status: "NEU",
-              substatus: "IN_KONTAKT",
               source: "website",
               ownership: contact.ownership || null,
               buildingType: contact.buildingType || null,

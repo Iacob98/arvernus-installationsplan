@@ -23,6 +23,7 @@ export const catalogVariantSchema = z.object({
   photoStoragePath: z.string().nullable().optional(),
   price: z.number().nonnegative("Preis muss >= 0 sein"),
   technicalData: z.array(technicalDataEntrySchema),
+  nennleistungKw: z.number().positive("Leistung muss positiv sein").nullable().optional(),
   active: z.boolean(),
   order: z.number().int(),
 });

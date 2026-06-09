@@ -6,6 +6,7 @@ import { requireAdmin, requireAuth } from "@/lib/auth-utils";
 import { clientSchema, ClientFormData } from "@/lib/validations/client";
 import { revalidatePath } from "next/cache";
 import { ClientStatus, Prisma } from "@prisma/client";
+import { cancelClientOfferReminders } from "./offer-reminders";
 
 export async function getClients(search?: string, statusFilter?: ClientStatus, assignedToFilter?: string) {
   const session = await auth();
@@ -72,9 +73,9 @@ export async function getClients(search?: string, statusFilter?: ClientStatus, a
   // Pipeline-Sortierung: aktive Stufen oben, in jeder Stufe updatedAt DESC.
   const STATUS_ORDER: Record<ClientStatus, number> = {
     NEU: 0,
-    IN_BEARBEITUNG: 1,
-    ANGERUFEN: 2,
-    ANGEBOT_VERSENDET: 3,
+    ANGERUFEN: 1,
+    ANGEBOT_VERSENDET: 2,
+    IM_KONTAKT: 3,
     VERKAUFT: 4,
     NICHT_VERKAUFT: 5,
   };
@@ -104,17 +105,17 @@ export async function getClientCounts(assignedToFilter?: string) {
   const [
     total,
     neu,
-    inBearbeitung,
     angerufen,
     angebotVersendet,
+    imKontakt,
     verkauft,
     nichtVerkauft,
   ] = await Promise.all([
     db.client.count({ where: baseWhere }),
     db.client.count({ where: { ...baseWhere, status: "NEU" } }),
-    db.client.count({ where: { ...baseWhere, status: "IN_BEARBEITUNG" } }),
     db.client.count({ where: { ...baseWhere, status: "ANGERUFEN" } }),
     db.client.count({ where: { ...baseWhere, status: "ANGEBOT_VERSENDET" } }),
+    db.client.count({ where: { ...baseWhere, status: "IM_KONTAKT" } }),
     db.client.count({ where: { ...baseWhere, status: "VERKAUFT" } }),
     db.client.count({ where: { ...baseWhere, status: "NICHT_VERKAUFT" } }),
   ]);
@@ -122,9 +123,9 @@ export async function getClientCounts(assignedToFilter?: string) {
   return {
     total,
     neu,
-    inBearbeitung,
     angerufen,
     angebotVersendet,
+    imKontakt,
     verkauft,
     nichtVerkauft,
   };
@@ -235,36 +236,45 @@ export async function updateClient(id: string, data: ClientFormData) {
 
   const validated = clientSchema.parse(data);
 
+  const before = await db.client.findUnique({
+    where: { id },
+    select: { status: true },
+  });
+
   const client = await db.client.update({ where: { id }, data: validated });
+
+  if (
+    before &&
+    before.status !== client.status &&
+    (client.status === "IM_KONTAKT" ||
+      client.status === "VERKAUFT" ||
+      client.status === "NICHT_VERKAUFT")
+  ) {
+    await cancelClientOfferReminders(id);
+  }
+
   revalidatePath("/clients");
   revalidatePath(`/clients/${id}`);
   return client;
 }
 
-export async function updateClientStatus(
-  id: string,
-  status: ClientStatus,
-  substatus?: string | null,
-  dealProbability?: string | null
-) {
+export async function markClientImKontakt(id: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Nicht authentifiziert");
 
-  const updateData: Record<string, unknown> = { status };
-
-  // Clear substatus when not IN_BEARBEITUNG
-  if (status !== "IN_BEARBEITUNG") {
-    updateData.substatus = null;
-    updateData.dealProbability = null;
-  } else {
-    if (substatus !== undefined) updateData.substatus = substatus;
-    if (dealProbability !== undefined) updateData.dealProbability = dealProbability;
+  const sentOfferCount = await db.offer.count({
+    where: { clientId: id, status: "SENT" },
+  });
+  if (sentOfferCount === 0) {
+    throw new Error("Kein gesendetes Angebot vorhanden");
   }
 
   const client = await db.client.update({
     where: { id },
-    data: updateData,
+    data: { status: "IM_KONTAKT" },
   });
+
+  await cancelClientOfferReminders(id);
 
   revalidatePath("/clients");
   revalidatePath(`/clients/${id}`);
@@ -301,6 +311,10 @@ export async function toggleUnsubscribe(id: string, unsubscribed: boolean) {
     where: { id },
     data: { unsubscribed },
   });
+
+  if (unsubscribed) {
+    await cancelClientOfferReminders(id);
+  }
 
   revalidatePath("/clients");
   revalidatePath(`/clients/${id}`);

@@ -14,12 +14,17 @@ export default auth((req) => {
   }
 
   if (isLoggedIn && isLoginPage) {
-    const home = req.auth?.user?.role === "ADMIN" ? "/projects" : "/clients";
-    return NextResponse.redirect(new URL(home, req.url));
+    return NextResponse.redirect(new URL("/clients", req.url));
+  }
+
+  // /projects is temporarily hidden — will move to a separate site / user group.
+  // The route files stay in the repo; here we just block access in the dashboard.
+  if (isLoggedIn && req.nextUrl.pathname.startsWith("/projects")) {
+    return NextResponse.redirect(new URL("/clients", req.url));
   }
 
   // Admin-only routes
-  const adminOnlyPaths = ["/users", "/campaigns", "/settings", "/projects"];
+  const adminOnlyPaths = ["/users", "/campaigns", "/settings"];
   const isAdminRoute = adminOnlyPaths.some((p) => req.nextUrl.pathname.startsWith(p));
   if (isLoggedIn && isAdminRoute && req.auth?.user?.role !== "ADMIN") {
     return NextResponse.redirect(new URL("/clients", req.url));

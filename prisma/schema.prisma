@@ -51,23 +51,11 @@ enum DocumentStatus {
 
 enum ClientStatus {
   NEU
-  IN_BEARBEITUNG
   ANGERUFEN
   ANGEBOT_VERSENDET
+  IM_KONTAKT
   VERKAUFT
   NICHT_VERKAUFT
-}
-
-enum ClientSubstatus {
-  IN_KONTAKT
-  ANGEBOT_VERSENDET
-  NICHT_ERREICHBAR
-}
-
-enum DealProbability {
-  NIEDRIG
-  MITTEL
-  HOCH
 }
 
 enum EmailStatus {
@@ -113,6 +101,14 @@ enum OfferDiscountKind {
   FOERDERUNG
 }
 
+enum OfferReminderStatus {
+  SCHEDULED
+  SENT
+  CANCELLED
+  SKIPPED
+  FAILED
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -151,8 +147,6 @@ model Client {
   city            String
   notes           String?
   status          ClientStatus     @default(NEU)
-  substatus       ClientSubstatus?
-  dealProbability DealProbability?
   source          String?
   unsubscribed    Boolean          @default(false)
 
@@ -581,6 +575,7 @@ model CatalogItemVariant {
   photoStoragePath String?
   price            Decimal @db.Decimal(10, 2)
   technicalData    Json    @default("[]")
+  nennleistungKw   Float?
   active           Boolean @default(true)
   order            Int     @default(0)
 
@@ -620,6 +615,7 @@ model Offer {
 
   positions OfferPosition[]
   discounts OfferDiscount[]
+  reminders OfferReminder[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -628,6 +624,35 @@ model Offer {
   @@index([clientId])
   @@index([status])
   @@map("offers")
+}
+
+model OfferReminderTemplate {
+  step      Int      @id
+  subject   String
+  htmlBody  String
+  updatedAt DateTime @updatedAt
+
+  @@map("offer_reminder_templates")
+}
+
+model OfferReminder {
+  id            String              @id @default(cuid())
+  offerId       String
+  offer         Offer               @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  step          Int
+  scheduledAt   DateTime
+  status        OfferReminderStatus @default(SCHEDULED)
+  jobId         String?
+  emailLogId    String?
+  sentAt        DateTime?
+  skippedReason String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@unique([offerId, step])
+  @@index([offerId])
+  @@index([status, scheduledAt])
+  @@map("offer_reminders")
 }
 
 model OfferPosition {

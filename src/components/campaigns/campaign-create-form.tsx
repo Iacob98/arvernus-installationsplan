@@ -52,7 +52,7 @@ export function CampaignCreateForm({ templates }: Props) {
       await createCampaign({
         name,
         templateId,
-        statusFilter: statusFilter as "ALL" | "IN_BEARBEITUNG" | "VERKAUFT" | "NICHT_VERKAUFT",
+        statusFilter: statusFilter as "ALL" | "NEU" | "ANGERUFEN" | "ANGEBOT_VERSENDET" | "IM_KONTAKT" | "VERKAUFT" | "NICHT_VERKAUFT",
       });
 
       toast.success("Kampagne erstellt und E-Mails werden gesendet");
@@ -106,7 +106,9 @@ export function CampaignCreateForm({ templates }: Props) {
               <SelectContent>
                 <SelectItem value="ALL">Alle Kunden</SelectItem>
                 <SelectItem value="NEU">Neu</SelectItem>
-                <SelectItem value="IN_BEARBEITUNG">In Bearbeitung</SelectItem>
+                <SelectItem value="ANGERUFEN">Angerufen</SelectItem>
+                <SelectItem value="ANGEBOT_VERSENDET">Angebot versendet</SelectItem>
+                <SelectItem value="IM_KONTAKT">In Kontakt</SelectItem>
                 <SelectItem value="VERKAUFT">Verkauft</SelectItem>
                 <SelectItem value="NICHT_VERKAUFT">Nicht Verkauft</SelectItem>
               </SelectContent>

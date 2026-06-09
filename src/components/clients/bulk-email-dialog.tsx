@@ -28,9 +28,9 @@ import { toast } from "sonner";
 const STATUS_LABELS: Record<string, string> = {
   ALL: "Alle Kunden",
   NEU: "Neu",
-  IN_BEARBEITUNG: "In Bearbeitung",
   ANGERUFEN: "Angerufen",
   ANGEBOT_VERSENDET: "Angebot versendet",
+  IM_KONTAKT: "In Kontakt",
   VERKAUFT: "Verkauft",
   NICHT_VERKAUFT: "Nicht verkauft",
 };
