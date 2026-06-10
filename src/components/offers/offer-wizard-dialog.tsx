@@ -51,7 +51,12 @@ import {
   calcHeizlast,
   type BaujahrChip,
 } from "@/lib/heizlast";
-import { resolveTemplate, type OfferTemplate } from "@/lib/offer-templates";
+import {
+  resolveTemplate,
+  type OfferTemplate,
+  buildTemplateMatchSpec,
+  matchTemplate,
+} from "@/lib/offer-templates";
 import {
   SERVICE_PRESETS,
   defaultServiceLines,
@@ -827,23 +832,46 @@ function PositionsStep({
     return kw >= recommendedKw - 1 && kw <= recommendedKw + 2;
   }
 
+  const matchSpec = useMemo(() => {
+    const inq = inquiry ?? {};
+    return buildTemplateMatchSpec({
+      recommendedKw,
+      hotWaterIncluded: inq.hotWaterIncluded,
+      warmwasserSpeicherLiter: inq.warmwasserSpeicherLiter,
+      heizsystem: inq.heizsystem,
+      solarthermieVorhanden: inq.solarthermieVorhanden,
+    });
+  }, [inquiry, recommendedKw]);
+
   const templatesWithKw = useMemo(() => {
     return templates.map((tpl) => {
-      const { matches } = resolveTemplate(tpl, catalog);
-      const wp = matches.find((m) => m.catalogItem.type === "WAERMEPUMPE");
-      const tplKw = wp?.variant.nennleistungKw ?? null;
-      return { tpl, tplKw };
+      const tplKw =
+        tpl.nennleistungKw ??
+        (() => {
+          const { matches } = resolveTemplate(tpl, catalog);
+          const wp = matches.find((m) => m.catalogItem.type === "WAERMEPUMPE");
+          return wp?.variant.nennleistungKw ?? null;
+        })();
+      const kind = matchTemplate(tpl, matchSpec);
+      return { tpl, tplKw, kind };
     });
-  }, [templates, catalog]);
+  }, [templates, catalog, matchSpec]);
 
-  const recommendedTemplates =
-    recommendedKw == null
-      ? templatesWithKw
-      : templatesWithKw.filter(({ tplKw }) => kwMatches(tplKw));
-  const otherTemplates =
-    recommendedKw == null
-      ? []
-      : templatesWithKw.filter(({ tplKw }) => !kwMatches(tplKw));
+  // Если в spec-у нет kW (Step 0 не заполнен) — fallback на старое kW-only поведение.
+  const recommendedTemplates = useMemo(() => {
+    if (recommendedKw == null) return templatesWithKw;
+    const exact = templatesWithKw.filter((t) => t.kind === "exact");
+    if (exact.length > 0) return exact;
+    return templatesWithKw.filter(
+      (t) => t.kind === "partial" && kwMatches(t.tplKw),
+    );
+  }, [templatesWithKw, recommendedKw]);
+
+  const otherTemplates = useMemo(() => {
+    if (recommendedKw == null) return [];
+    const recommendedIds = new Set(recommendedTemplates.map(({ tpl }) => tpl.id));
+    return templatesWithKw.filter(({ tpl }) => !recommendedIds.has(tpl.id));
+  }, [templatesWithKw, recommendedTemplates, recommendedKw]);
 
   const filterVariantsByKw =
     selectedItem?.type === "WAERMEPUMPE" && recommendedKw != null && !showAllVariants;

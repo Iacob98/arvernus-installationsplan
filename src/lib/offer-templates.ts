@@ -15,6 +15,11 @@ export type OfferTemplate = {
   label: string;
   description: string;
   components: TemplateComponent[];
+  /** Strukturierte Spec für automatisches Matching im Wizard. */
+  nennleistungKw?: number | null;
+  warmwasserSpeicherLiter?: number | null;
+  heizkreiseAnzahl?: number | null;
+  mitSolar?: boolean;
 };
 
 /**
@@ -25,6 +30,10 @@ export function dbTemplateToOfferTemplate(t: {
   id: string;
   name: string;
   description: string | null;
+  nennleistungKw?: number | null;
+  warmwasserSpeicherLiter?: number | null;
+  heizkreiseAnzahl?: number | null;
+  mitSolar?: boolean;
   components: {
     type: CatalogItemType;
     keyword: string;
@@ -38,6 +47,10 @@ export function dbTemplateToOfferTemplate(t: {
     id: t.id,
     label: t.name,
     description: t.description ?? "",
+    nennleistungKw: t.nennleistungKw ?? null,
+    warmwasserSpeicherLiter: t.warmwasserSpeicherLiter ?? null,
+    heizkreiseAnzahl: t.heizkreiseAnzahl ?? null,
+    mitSolar: t.mitSolar ?? false,
     components: t.components.map((c) => ({
       type: c.type,
       keyword: c.keyword,
@@ -47,6 +60,87 @@ export function dbTemplateToOfferTemplate(t: {
       catalogItemVariantId: c.catalogItemVariantId ?? null,
     })),
   };
+}
+
+/**
+ * Build the target spec from inquiry + recommended kW. Used to find the
+ * best-matching template on Step 1 of the offer wizard.
+ */
+export type TemplateMatchSpec = {
+  kw: number | null;
+  warmwasserLiter: number | null;
+  heizkreise: number;
+  solar: boolean;
+};
+
+export function buildTemplateMatchSpec(args: {
+  recommendedKw: number | null;
+  hotWaterIncluded: string | null | undefined;
+  warmwasserSpeicherLiter: string | null | undefined;
+  heizsystem: string | null | undefined;
+  solarthermieVorhanden: string | null | undefined;
+}): TemplateMatchSpec {
+  const isKombi = (args.heizsystem ?? "").toLowerCase().includes("kombination");
+  const ww =
+    args.hotWaterIncluded === "Ja" && args.warmwasserSpeicherLiter
+      ? Number(args.warmwasserSpeicherLiter) || null
+      : null;
+  return {
+    kw: args.recommendedKw,
+    warmwasserLiter: ww,
+    heizkreise: isKombi ? 2 : 1,
+    solar: args.solarthermieVorhanden === "Ja",
+  };
+}
+
+/**
+ * Compare a template against the target spec. Returns:
+ *  - exact:    all 4 axes match (kW within ±1 kW tolerance)
+ *  - близко:   ≥ 3 axes match — template is shown but as fallback
+ *  - far:      anything else
+ */
+export type TemplateMatchKind = "exact" | "partial" | "far";
+
+export function matchTemplate(
+  tpl: OfferTemplate,
+  spec: TemplateMatchSpec,
+): TemplateMatchKind {
+  let hits = 0;
+  let total = 0;
+
+  // kW
+  if (spec.kw != null && tpl.nennleistungKw != null) {
+    total += 1;
+    if (Math.abs(tpl.nennleistungKw - spec.kw) <= 1) hits += 1;
+  }
+
+  // Warmwasser-Speicher
+  if (spec.warmwasserLiter != null) {
+    total += 1;
+    if (tpl.warmwasserSpeicherLiter === spec.warmwasserLiter) hits += 1;
+  } else {
+    total += 1;
+    if (
+      tpl.warmwasserSpeicherLiter == null ||
+      tpl.warmwasserSpeicherLiter === 0
+    ) {
+      hits += 1;
+    }
+  }
+
+  // Heizkreise (1 = Standard, 2 = Kombination)
+  total += 1;
+  const tplHk = tpl.heizkreiseAnzahl ?? 1;
+  if (tplHk === spec.heizkreise) hits += 1;
+
+  // Solar
+  total += 1;
+  if ((tpl.mitSolar ?? false) === spec.solar) hits += 1;
+
+  if (total === 0) return "far";
+  if (hits === total) return "exact";
+  if (hits >= total - 1) return "partial";
+  return "far";
 }
 
 /**

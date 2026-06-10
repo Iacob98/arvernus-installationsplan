@@ -111,3 +111,27 @@ export async function getActiveUsers() {
     orderBy: { name: "asc" },
   });
 }
+
+export async function getOwnProfile() {
+  const session = await requireAuth();
+  return db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      emailSignature: true,
+    },
+  });
+}
+
+export async function updateOwnSignature(signature: string) {
+  const session = await requireAuth();
+  const value = signature.trim();
+  await db.user.update({
+    where: { id: session.user.id },
+    data: { emailSignature: value || null },
+  });
+  revalidatePath("/profile");
+}

@@ -51,6 +51,8 @@ export type KanbanClient = {
   emailsCount: number;
   lastCall: Date | null;
   lastOffer: Date | null;
+  unreadInboundCount: number;
+  lastInboundAt: Date | null;
   assignedTo?: { id: string; name: string } | null;
 };
 
@@ -293,11 +295,18 @@ function ClientCard({
     incomeRange: client.incomeRange,
   });
 
+  const hasUnread = client.unreadInboundCount > 0;
+
   return (
     <Link
       href={`/clients/${client.id}`}
       className="block bg-card border border-border/70 rounded-md transition-all hover:-translate-y-px hover:border-foreground/40 cursor-grab active:cursor-grabbing"
-      style={{ borderTop: `3px solid ${color}` }}
+      style={{
+        borderTop: `3px solid ${color}`,
+        ...(hasUnread
+          ? { boxShadow: "inset 3px 0 0 #2563eb" }
+          : {}),
+      }}
     >
       <div className="p-2.5 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
@@ -323,6 +332,15 @@ function ClientCard({
             </div>
           </div>
           <div className="flex flex-col items-end gap-1 shrink-0">
+            {hasUnread && (
+              <span
+                className="inline-flex items-center gap-0.5 px-1 rounded text-[9px] font-semibold"
+                style={{ background: "#dbeafe", color: "#1e40af" }}
+                aria-label={`${client.unreadInboundCount} neue Antwort(en)`}
+              >
+                ✉ {client.unreadInboundCount}
+              </span>
+            )}
             {lead.tier === "hot" && (
               <Flame
                 className="h-3 w-3"

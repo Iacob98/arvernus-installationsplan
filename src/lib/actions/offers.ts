@@ -18,6 +18,7 @@ import { Prisma } from "@prisma/client";
 import { render } from "@react-email/render";
 import { BrandedEmail } from "@/lib/email/template";
 import { getLogoBase64 } from "@/lib/pdf/logo";
+import { appendSignaturePlain, buildFromHeader } from "@/lib/email/signature";
 import {
   scheduleOfferReminders,
   cancelOfferReminders,
@@ -311,11 +312,19 @@ export async function sendOffer(offerId: string, data: SendOfferData) {
   }
 
   const company = (await db.companySettings.findFirst()) ?? DEFAULT_COMPANY;
+  const sender = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { name: true, emailSignature: true },
+  });
+  if (!sender) throw new Error("Benutzer nicht gefunden");
+
+  const signedBody = appendSignaturePlain(validated.body, sender);
+  const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || "";
 
   const html = await render(
     BrandedEmail({
       subject: validated.subject,
-      body: validated.body,
+      body: signedBody,
       company: {
         name: company.name,
         street: company.street,
@@ -350,7 +359,7 @@ export async function sendOffer(offerId: string, data: SendOfferData) {
   const emailLog = await db.emailLog.create({
     data: {
       subject: validated.subject,
-      body: validated.body,
+      body: signedBody,
       recipients: [offer.client.email],
       clientId: offer.clientId,
       sentById: session.user.id,
@@ -360,10 +369,10 @@ export async function sendOffer(offerId: string, data: SendOfferData) {
 
   try {
     await smtpTransporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      from: buildFromHeader(sender, fromAddress),
       to: offer.client.email,
       subject: validated.subject,
-      text: validated.body,
+      text: signedBody,
       html,
       attachments,
     });
@@ -379,7 +388,7 @@ export async function sendOffer(offerId: string, data: SendOfferData) {
         status: "SENT",
         sentAt: new Date(),
         emailSubject: validated.subject,
-        emailBody: validated.body,
+        emailBody: signedBody,
       },
     });
 

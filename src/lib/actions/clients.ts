@@ -70,7 +70,29 @@ export async function getClients(search?: string, statusFilter?: ClientStatus, a
     },
   });
 
-  // Pipeline-Sortierung: aktive Stufen oben, in jeder Stufe updatedAt DESC.
+  // Unread inbound counts per client (separate query to avoid Prisma
+  // include alias collision with _count.emailLogs).
+  const unreadGroups = await db.emailLog.groupBy({
+    by: ["clientId"],
+    where: {
+      clientId: { in: clients.map((c) => c.id) },
+      direction: "INBOUND",
+      read: false,
+    },
+    _count: { _all: true },
+  });
+  const unreadMap = new Map<string, number>();
+  for (const g of unreadGroups) {
+    if (g.clientId) unreadMap.set(g.clientId, g._count._all);
+  }
+
+  const enriched = clients.map((c) => ({
+    ...c,
+    unreadInboundCount: unreadMap.get(c.id) ?? 0,
+  }));
+
+  // Pipeline-Sortierung: status order, dann unread inbound oben
+  // (sortiert nach lastInboundAt DESC), zuletzt updatedAt DESC.
   const STATUS_ORDER: Record<ClientStatus, number> = {
     NEU: 0,
     ANGERUFEN: 1,
@@ -80,10 +102,34 @@ export async function getClients(search?: string, statusFilter?: ClientStatus, a
     NICHT_VERKAUFT: 5,
   };
 
-  return clients.sort((a, b) => {
+  return enriched.sort((a, b) => {
     const cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
     if (cmp !== 0) return cmp;
+
+    const aUnread = a.unreadInboundCount > 0 ? 1 : 0;
+    const bUnread = b.unreadInboundCount > 0 ? 1 : 0;
+    if (aUnread !== bUnread) return bUnread - aUnread;
+
+    if (aUnread === 1 && bUnread === 1) {
+      const aT = a.lastInboundAt?.getTime() ?? 0;
+      const bT = b.lastInboundAt?.getTime() ?? 0;
+      if (aT !== bT) return bT - aT;
+    }
+
     return b.updatedAt.getTime() - a.updatedAt.getTime();
+  });
+}
+
+export async function getMyUnreadInboundCount(): Promise<number> {
+  const session = await auth();
+  if (!session?.user) return 0;
+  const isAdmin = session.user.role === "ADMIN";
+  return db.emailLog.count({
+    where: {
+      direction: "INBOUND",
+      read: false,
+      client: isAdmin ? {} : { assignedToId: session.user.id },
+    },
   });
 }
 

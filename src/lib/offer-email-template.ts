@@ -7,7 +7,6 @@ export type OfferEmailContext = {
   rabattPercent: number;
   rabattFristTage: number;
   finanzierungMonate: number;
-  managerName: string;
 };
 
 /**
@@ -49,9 +48,6 @@ export function defaultOfferEmailBody(ctx: OfferEmailContext): string {
     "Nach Erhalt des unterschriebenen Angebots unterstützen wir dich gemeinsam mit unserem Finanzierungspartner bei der gesamten Abwicklung.",
     "",
     "Bei Fragen melde dich gerne.",
-    "",
-    "Viele Grüße",
-    ctx.managerName,
   ].join("\n");
 }
 

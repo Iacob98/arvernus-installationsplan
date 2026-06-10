@@ -64,6 +64,11 @@ enum EmailStatus {
   FAILED
 }
 
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
 enum CampaignStatus {
   DRAFT
   SENDING
@@ -110,14 +115,15 @@ enum OfferReminderStatus {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  passwordHash String
-  role         Role     @default(TECHNICIAN)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  passwordHash   String
+  role           Role     @default(TECHNICIAN)
+  active         Boolean  @default(true)
+  emailSignature String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   projects          Project[]
   documents         Document[]
@@ -169,6 +175,9 @@ model Client {
   wohneinheiten    String?
   heizsystem       String?
   incomeRange      String?
+
+  lastInboundAt         DateTime?
+  lastInboundEmailLogId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -399,17 +408,24 @@ model CallLog {
 }
 
 model EmailLog {
-  id         String      @id @default(cuid())
-  subject    String
-  body       String
-  recipients String[]
-  status     EmailStatus @default(PENDING)
+  id          String         @id @default(cuid())
+  subject     String
+  body        String
+  htmlBody    String?
+  recipients  String[]
+  status      EmailStatus    @default(PENDING)
+  direction   EmailDirection @default(OUTBOUND)
+  fromAddress String?
+  messageId   String?        @unique
+  inReplyTo   String?
+  read        Boolean        @default(true)
+  imapUid     Int?
 
   clientId String?
   client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
-  sentById String
-  sentBy   User   @relation(fields: [sentById], references: [id])
+  sentById String?
+  sentBy   User?   @relation(fields: [sentById], references: [id], onDelete: SetNull)
 
   campaignId String?
   campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
@@ -419,6 +435,8 @@ model EmailLog {
 
   @@index([clientId])
   @@index([campaignId])
+  @@index([clientId, direction, read])
+  @@index([clientId, createdAt])
   @@map("email_logs")
 }
 
@@ -505,6 +523,14 @@ model OfferTemplate {
   description String?
   order       Int                      @default(0)
   active      Boolean                  @default(true)
+
+  // Strukturierte Spec für automatisches Matching im Wizard:
+  // Heizlast / Anfragedaten -> passende Vorlage.
+  nennleistungKw          Float?
+  warmwasserSpeicherLiter Int?
+  heizkreiseAnzahl        Int?
+  mitSolar                Boolean @default(false)
+
   components  OfferTemplateComponent[]
   createdAt   DateTime                 @default(now())
   updatedAt   DateTime                 @updatedAt

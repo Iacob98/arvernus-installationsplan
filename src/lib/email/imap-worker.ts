@@ -1,8 +1,67 @@
 import { Worker, Job } from "bullmq";
 import { ImapFlow } from "imapflow";
-import { simpleParser } from "mailparser";
+import { simpleParser, type ParsedMail } from "mailparser";
 import { db } from "@/lib/db";
 import { redis, ImapJobData } from "@/lib/queue";
+
+// --- Inbox helpers ------------------------------------------------------
+
+function normaliseEmail(addr: string | null | undefined): string | null {
+  if (!addr) return null;
+  let s = addr.trim().toLowerCase();
+  if (process.env.INBOX_STRIP_PLUS_TAGS === "1") {
+    s = s.replace(/\+[^@]*@/, "@");
+  }
+  return s || null;
+}
+
+function isOwnAddress(addr: string | null): boolean {
+  if (!addr) return false;
+  const ownAddrs = new Set(
+    [process.env.SMTP_FROM, process.env.SMTP_USER]
+      .filter((v): v is string => Boolean(v))
+      .map((v) => v.toLowerCase()),
+  );
+  if (ownAddrs.has(addr)) return true;
+  const domains = (process.env.INBOX_OWN_DOMAINS || "")
+    .split(",")
+    .map((d) => d.trim().toLowerCase())
+    .filter(Boolean);
+  return domains.some((d) => addr.endsWith("@" + d));
+}
+
+function isAutoReply(parsed: ParsedMail): boolean {
+  const headers = parsed.headers;
+  const get = (k: string): string | null => {
+    const v = headers.get(k);
+    if (!v) return null;
+    return typeof v === "string" ? v.toLowerCase() : String(v).toLowerCase();
+  };
+  const auto = get("auto-submitted");
+  if (auto && (auto.includes("auto-replied") || auto.includes("auto-generated"))) {
+    return true;
+  }
+  if (get("x-autoreply")) return true;
+  const prec = get("precedence");
+  if (prec && (prec === "bulk" || prec === "auto_reply" || prec === "list")) {
+    return true;
+  }
+  return false;
+}
+
+function truncate(s: string | undefined | null, maxBytes = 1_000_000): string | null {
+  if (!s) return null;
+  if (s.length <= maxBytes) return s;
+  return s.slice(0, maxBytes);
+}
+
+async function markSeenSafe(client: ImapFlow, uid: number) {
+  try {
+    await client.messageFlagsAdd(uid.toString(), ["\\Seen"], { uid: true });
+  } catch {
+    // ignore — server may not allow flag changes on read-only mailbox
+  }
+}
 
 interface InquiryFields {
   ownership?: string;
@@ -280,46 +339,105 @@ async function processImapJob(job: Job<ImapJobData>) {
       });
 
       for await (const msg of messages) {
-        const messageId = msg.envelope?.messageId;
-        if (!messageId) continue;
+        try {
+          const messageId = msg.envelope?.messageId;
+          if (!messageId) continue;
 
-        // Check idempotency
-        const existing = await db.imapProcessedEmail.findUnique({
-          where: { messageId },
-        });
-        if (existing) continue;
-
-        if (!msg.source) continue;
-        const parsed = await simpleParser(msg.source);
-        const subject = parsed.subject || "";
-
-        // Skip Partneranfragen — not a client
-        if (/partneranfrage/i.test(subject)) {
-          await db.imapProcessedEmail.create({
-            data: {
-              messageId,
-              subject,
-              fromAddress: parsed.from?.value?.[0]?.address || null,
-            },
+          // Check idempotency
+          const existing = await db.imapProcessedEmail.findUnique({
+            where: { messageId },
           });
-          continue;
-        }
+          if (existing) continue;
 
-        // Detect email type
-        const isRechner = /rechner/i.test(subject);
-        const isContactForm = isRechner || /kontaktanfrage/i.test(subject);
+          if (!msg.source) continue;
+          const parsed = await simpleParser(msg.source);
+          const subject = parsed.subject || "";
+          const fromAddress = normaliseEmail(
+            parsed.from?.value?.[0]?.address || null,
+          );
 
-        if (!isContactForm) {
-          // Unknown email type — record but skip
-          await db.imapProcessedEmail.create({
-            data: {
-              messageId,
-              subject,
-              fromAddress: parsed.from?.value?.[0]?.address || null,
-            },
-          });
-          continue;
-        }
+          // Skip our own echoes and auto-replies — only audit-log
+          if (isOwnAddress(fromAddress) || isAutoReply(parsed)) {
+            await db.imapProcessedEmail.create({
+              data: { messageId, subject, fromAddress },
+            });
+            await markSeenSafe(client, msg.uid);
+            continue;
+          }
+
+          // Reply branch: match by client.email
+          if (fromAddress) {
+            const matched = await db.client.findFirst({
+              where: { email: { equals: fromAddress, mode: "insensitive" } },
+              orderBy: [
+                { assignedToId: { sort: "asc", nulls: "last" } },
+                { updatedAt: "desc" },
+              ],
+              select: { id: true },
+            });
+
+            if (matched) {
+              const text = parsed.text || "";
+              const html = truncate(parsed.html || undefined);
+              const inReplyTo = (parsed.inReplyTo as string | undefined) ?? null;
+
+              const log = await db.emailLog.create({
+                data: {
+                  subject,
+                  body: text,
+                  htmlBody: html,
+                  recipients: [],
+                  status: "SENT",
+                  direction: "INBOUND",
+                  fromAddress,
+                  messageId,
+                  inReplyTo,
+                  read: false,
+                  imapUid: msg.uid,
+                  clientId: matched.id,
+                  sentById: null,
+                },
+              });
+
+              await db.client.update({
+                where: { id: matched.id },
+                data: {
+                  lastInboundAt: new Date(),
+                  lastInboundEmailLogId: log.id,
+                  updatedAt: new Date(),
+                },
+              });
+
+              await db.imapProcessedEmail.create({
+                data: { messageId, subject, fromAddress, clientId: matched.id },
+              });
+
+              await markSeenSafe(client, msg.uid);
+              continue;
+            }
+          }
+
+          // Skip Partneranfragen — not a client
+          if (/partneranfrage/i.test(subject)) {
+            await db.imapProcessedEmail.create({
+              data: { messageId, subject, fromAddress },
+            });
+            await markSeenSafe(client, msg.uid);
+            continue;
+          }
+
+          // Detect email type
+          const isRechner = /rechner/i.test(subject);
+          const isContactForm = isRechner || /kontaktanfrage/i.test(subject);
+
+          if (!isContactForm) {
+            // Unknown email type — record but skip
+            await db.imapProcessedEmail.create({
+              data: { messageId, subject, fromAddress },
+            });
+            await markSeenSafe(client, msg.uid);
+            continue;
+          }
 
         const textBody = parsed.text || "";
         const htmlBody = parsed.html || undefined;
@@ -379,6 +497,13 @@ async function processImapJob(job: Job<ImapJobData>) {
           await client.messageMove(msg.uid.toString(), "Processed", { uid: true });
         } catch {
           // Processed folder may not exist, skip moving
+        }
+        } catch (msgErr) {
+          console.error(
+            "IMAP per-message error:",
+            msgErr instanceof Error ? msgErr.message : msgErr,
+          );
+          // continue with the next message
         }
       }
     } finally {

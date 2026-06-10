@@ -18,6 +18,7 @@ import {
   Handshake,
   CheckCircle2,
   XCircle,
+  ArrowDownLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -79,6 +80,10 @@ export function ClientDetailWorkspace({
   const [showOfferWizard, setShowOfferWizard] = useState(false);
   const [showCallSheet, setShowCallSheet] = useState(false);
   const [showEmailCompose, setShowEmailCompose] = useState(false);
+  const [composeInitial, setComposeInitial] = useState<{
+    subject?: string;
+    body?: string;
+  }>({});
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSending, setNoteSending] = useState(false);
   const [tab, setTab] = useState("anfrage");
@@ -467,7 +472,16 @@ export function ClientDetailWorkspace({
             </TabsContent>
             <TabsContent value="verlauf" className="mt-4 space-y-4">
               <ClientNotesSection clientId={client.id} notes={client.clientNotes} />
-              <EmailLogSection emailLogs={client.emailLogs} />
+              <EmailLogSection
+                emailLogs={client.emailLogs}
+                onReply={(log) => {
+                  const subject = log.subject.startsWith("Re:")
+                    ? log.subject
+                    : `Re: ${log.subject}`;
+                  setComposeInitial({ subject, body: "" });
+                  setShowEmailCompose(true);
+                }}
+              />
             </TabsContent>
             <TabsContent value="dateien" className="mt-4">
               <ClientAttachmentsSection
@@ -533,19 +547,25 @@ export function ClientDetailWorkspace({
 
       <EmailComposeDialog
         open={showEmailCompose}
-        onOpenChange={setShowEmailCompose}
+        onOpenChange={(o) => {
+          setShowEmailCompose(o);
+          if (!o) setComposeInitial({});
+        }}
         clientId={client.id}
         clientEmail={client.email}
         clientName={clientName}
+        initialSubject={composeInitial.subject}
+        initialBody={composeInitial.body}
       />
     </div>
   );
 }
 
 type ActivityEvent = {
-  type: "call" | "offer" | "reminder" | "note" | "email";
+  type: "call" | "offer" | "reminder" | "note" | "email" | "email-in";
   date: Date;
   text: string;
+  unread?: boolean;
 };
 
 function buildActivityEvents(client: ClientDetail): ActivityEvent[] {
@@ -587,11 +607,20 @@ function buildActivityEvents(client: ClientDetail): ActivityEvent[] {
     });
   }
   for (const e of client.emailLogs) {
-    events.push({
-      type: "email",
-      date: e.createdAt,
-      text: `E-Mail · ${e.subject}`,
-    });
+    if (e.direction === "INBOUND") {
+      events.push({
+        type: "email-in",
+        date: e.createdAt,
+        text: `Antwort vom Kunden · ${e.subject}`,
+        unread: !e.read,
+      });
+    } else {
+      events.push({
+        type: "email",
+        date: e.createdAt,
+        text: `E-Mail gesendet · ${e.subject}`,
+      });
+    }
   }
   events.sort((a, b) => b.date.getTime() - a.date.getTime());
   return events.slice(0, 20);
@@ -609,27 +638,57 @@ function ActivityTimeline({ events }: { events: ActivityEvent[] }) {
     <div className="bg-card border border-border/60 rounded-md p-3 max-h-[280px] overflow-y-auto">
       <ol className="relative">
         <div className="absolute left-[7px] top-1 bottom-1 w-px bg-border/60" />
-        {events.map((e, i) => (
-          <li
-            key={i}
-            className="relative flex items-start gap-3 py-1.5 last:pb-0"
-          >
-            <span
-              className="relative z-10 mt-1 h-3.5 w-3.5 rounded-full border border-border/70 flex items-center justify-center shrink-0"
-              style={{ background: "var(--brand-muted)" }}
+        {events.map((e, i) => {
+          const isInbound = e.type === "email-in";
+          return (
+            <li
+              key={i}
+              className={`relative flex items-start gap-3 py-1.5 last:pb-0 rounded ${
+                isInbound
+                  ? "bg-blue-50/70 dark:bg-blue-950/30 -mx-1 px-1"
+                  : ""
+              }`}
             >
-              <ActivityIcon type={e.type} />
-            </span>
-            <div className="min-w-0 flex-1 flex items-start justify-between gap-2">
-              <span className="text-xs text-foreground/90 truncate">
-                {e.text}
+              <span
+                className="relative z-10 mt-1 h-3.5 w-3.5 rounded-full border flex items-center justify-center shrink-0"
+                style={
+                  isInbound
+                    ? {
+                        background: "#dbeafe",
+                        borderColor: "#3b82f6",
+                      }
+                    : {
+                        background: "var(--brand-muted)",
+                        borderColor: undefined,
+                      }
+                }
+              >
+                <ActivityIcon type={e.type} />
               </span>
-              <span className="font-mono text-[10px] tabular-nums text-muted-foreground shrink-0">
-                {formatDistanceToNowStrict(e.date, { locale: de })}
-              </span>
-            </div>
-          </li>
-        ))}
+              <div className="min-w-0 flex-1 flex items-start justify-between gap-2">
+                <span
+                  className={`text-xs truncate ${
+                    isInbound
+                      ? "font-medium text-blue-900 dark:text-blue-100"
+                      : "text-foreground/90"
+                  }`}
+                >
+                  {e.text}
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {isInbound && e.unread && (
+                    <span className="bg-blue-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                      Neu
+                    </span>
+                  )}
+                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                    {formatDistanceToNowStrict(e.date, { locale: de })}
+                  </span>
+                </div>
+              </div>
+            </li>
+          );
+        })}
       </ol>
     </div>
   );
@@ -643,5 +702,7 @@ function ActivityIcon({ type }: { type: ActivityEvent["type"] }) {
   if (type === "reminder") return <Bell className={cls} style={{ color }} />;
   if (type === "note") return <StickyNote className={cls} style={{ color }} />;
   if (type === "email") return <Mail className={cls} style={{ color }} />;
+  if (type === "email-in")
+    return <ArrowDownLeft className={cls} style={{ color: "#2563eb" }} />;
   return null;
 }

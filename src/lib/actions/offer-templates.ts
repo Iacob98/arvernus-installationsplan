@@ -46,6 +46,10 @@ export async function createOfferTemplate(data: OfferTemplateFormData) {
       description: validated.description ?? null,
       order: validated.order,
       active: validated.active,
+      nennleistungKw: validated.nennleistungKw ?? null,
+      warmwasserSpeicherLiter: validated.warmwasserSpeicherLiter ?? null,
+      heizkreiseAnzahl: validated.heizkreiseAnzahl ?? null,
+      mitSolar: validated.mitSolar ?? false,
       components: {
         create: validated.components.map((c, idx) => ({
           type: c.type,
@@ -87,6 +91,10 @@ export async function updateOfferTemplate(id: string, data: OfferTemplateFormDat
         description: validated.description ?? null,
         order: validated.order,
         active: validated.active,
+        nennleistungKw: validated.nennleistungKw ?? null,
+        warmwasserSpeicherLiter: validated.warmwasserSpeicherLiter ?? null,
+        heizkreiseAnzahl: validated.heizkreiseAnzahl ?? null,
+        mitSolar: validated.mitSolar ?? false,
       },
     });
 

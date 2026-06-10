@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
 import { getClient } from "@/lib/actions/clients";
+import { markInboundRead } from "@/lib/actions/emails";
 import {
   listActiveCatalogItems,
   type CatalogItemForClient,
@@ -27,6 +28,9 @@ export default async function ClientDetailPage({
     listActiveOfferTemplates(),
   ]);
   if (!client) notFound();
+
+  // Mark any unread inbound emails as read on visit. Failure is non-fatal.
+  await markInboundRead(clientId).catch(() => {});
 
   const catalog: CatalogItemForClient[] = serializeDecimals(catalogRaw);
   const offerTemplates: OfferTemplate[] = templatesRaw.map(

@@ -55,6 +55,8 @@ function toKanbanClient(c: RawClient): KanbanClient {
     emailsCount: c._count.emailLogs,
     lastCall: c.callLogs[0]?.calledAt ?? null,
     lastOffer: c.offers[0]?.createdAt ?? null,
+    unreadInboundCount: c.unreadInboundCount,
+    lastInboundAt: c.lastInboundAt,
     assignedTo: c.assignedTo
       ? { id: c.assignedTo.id, name: c.assignedTo.name }
       : null,

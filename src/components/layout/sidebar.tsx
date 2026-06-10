@@ -16,6 +16,7 @@ import {
   Package,
   BarChart3,
   LayoutTemplate,
+  User as UserIcon,
 } from "lucide-react";
 import {
   Sheet,
@@ -24,33 +25,73 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-type NavItem = { href: string; label: string; icon: typeof FolderOpen };
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof FolderOpen;
+  /** Show numeric badge to the right of the label. */
+  badgeKey?: "inboxUnread";
+};
 
 function getNavItems(role?: string): NavItem[] {
   if (role !== "ADMIN") {
     return [
       { href: "/kpi", label: "Meine KPI", icon: BarChart3 },
-      { href: "/clients", label: "Kunden", icon: Users },
+      { href: "/clients", label: "Kunden", icon: Users, badgeKey: "inboxUnread" },
+      { href: "/profile", label: "Mein Profil", icon: UserIcon },
     ];
   }
 
   return [
     { href: "/kpi", label: "KPI", icon: BarChart3 },
-    { href: "/clients", label: "Kunden", icon: Users },
+    { href: "/clients", label: "Kunden", icon: Users, badgeKey: "inboxUnread" },
     { href: "/users", label: "Benutzer", icon: UserCog },
     { href: "/campaigns", label: "Kampagnen", icon: Megaphone },
     { href: "/settings/catalog", label: "Katalog", icon: Package },
     { href: "/settings/templates", label: "Vorlagen", icon: LayoutTemplate },
     { href: "/settings", label: "Einstellungen", icon: Settings },
+    { href: "/profile", label: "Mein Profil", icon: UserIcon },
   ];
+}
+
+function useInboxUnreadCount(): number {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchCount() {
+      try {
+        const res = await fetch("/api/inbox/unread-count", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { count?: number };
+        if (!cancelled) setCount(data.count ?? 0);
+      } catch {
+        // network error — keep previous count
+      }
+    }
+    fetchCount();
+    const id = setInterval(fetchCount, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+  return count;
 }
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const navItems = getNavItems(session?.user?.role);
+  const inboxUnread = useInboxUnreadCount();
+
+  function badgeFor(item: NavItem): number {
+    if (item.badgeKey === "inboxUnread") return inboxUnread;
+    return 0;
+  }
 
   return (
     <nav className="flex-1 p-4 space-y-1">
@@ -59,6 +100,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           item.href === "/settings"
             ? pathname === "/settings"
             : pathname.startsWith(item.href);
+        const badge = badgeFor(item);
         return (
           <Link
             key={item.href}
@@ -72,7 +114,12 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             )}
           >
             <item.icon className="h-5 w-5 md:h-4 md:w-4" />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {badge > 0 && (
+              <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+                {badge}
+              </span>
+            )}
           </Link>
         );
       })}

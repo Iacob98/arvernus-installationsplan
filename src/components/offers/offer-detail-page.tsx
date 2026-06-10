@@ -78,7 +78,6 @@ export function OfferDetailPage({ offer }: { offer: OfferDetailForClient }) {
       rabattPercent: DEFAULT_RABATT_PERCENT,
       rabattFristTage: DEFAULT_RABATT_FRIST_TAGE,
       finanzierungMonate: DEFAULT_FINANZIERUNG_MONATE,
-      managerName: offer.createdBy.name,
     });
 
   const [subject, setSubject] = useState(defaultSubject);

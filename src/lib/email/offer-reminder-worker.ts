@@ -6,6 +6,10 @@ import { getLogoBase64 } from "@/lib/pdf/logo";
 import { getFileBuffer } from "@/lib/storage";
 import { renderBrandedHtmlEmail } from "./template";
 import { replaceTemplateVars } from "@/lib/template-vars";
+import {
+  appendSignatureHtml,
+  buildFromHeader,
+} from "./signature";
 
 async function markSkipped(reminderId: string, reason: string) {
   await db.offerReminder.update({
@@ -26,7 +30,9 @@ export async function processOfferReminderJob(
       offer: {
         include: {
           client: true,
-          createdBy: { select: { id: true, name: true } },
+          createdBy: {
+            select: { id: true, name: true, emailSignature: true },
+          },
         },
       },
     },
@@ -76,12 +82,19 @@ export async function processOfferReminderJob(
   });
   if (!template) return markSkipped(reminderId, "no-template");
 
+  const sender = {
+    name: offer.createdBy?.name ?? "",
+    emailSignature: offer.createdBy?.emailSignature ?? null,
+  };
   const vars = {
     firstName: client.firstName,
-    managerName: offer.createdBy?.name ?? "",
+    managerName: sender.name,
   };
   const subject = replaceTemplateVars(template.subject, vars);
-  const htmlBody = replaceTemplateVars(template.htmlBody, vars);
+  const rawBody = replaceTemplateVars(template.htmlBody, vars);
+  const htmlBody = sender.name
+    ? appendSignatureHtml(rawBody, sender)
+    : rawBody;
 
   const company = (await db.companySettings.findFirst()) ?? {
     name: "Arvernus",
@@ -127,8 +140,12 @@ export async function processOfferReminderJob(
   });
 
   try {
+    const fromAddress =
+      process.env.SMTP_FROM || process.env.SMTP_USER || "";
     await smtpTransporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      from: sender.name
+        ? buildFromHeader({ name: sender.name }, fromAddress)
+        : fromAddress,
       to: client.email,
       subject,
       html: finalHtml,

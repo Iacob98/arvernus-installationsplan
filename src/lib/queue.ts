@@ -41,6 +41,7 @@ export type EmailJobData = {
   to: string[];
   subject: string;
   body: string;
+  from?: string;
 };
 
 export const emailQueue = new Queue("email-sending", {

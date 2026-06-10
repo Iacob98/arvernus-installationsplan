@@ -19,19 +19,30 @@ export const BAUJAHR_CHIPS = [
 
 export type BaujahrChip = (typeof BAUJAHR_CHIPS)[number];
 
-/** spezifische Heizlast in W/m² */
+/**
+ * spezifische Heizlast in W/m² — Mittelwerte aus den BWP-Empfehlungen
+ * (Verbraucherzentrale / EPISCOPE) für unsanierte bzw. teilsanierte
+ * Gebäude des jeweiligen Baujahres. Frühere Werte (180/100/80/60/40) lagen
+ * an der oberen Grenze und überschätzten die Heizlast bei realistisch
+ * gedämmten Häusern um ca. 15–25 %.
+ */
 const SPEZ_HEIZLAST: Record<BaujahrChip, number> = {
-  "bis 1977": 180,
+  "bis 1977": 150,
   "1978–1994": 100,
-  "1995–2001": 80,
-  "2002–2008": 60,
-  "ab 2009": 40,
+  "1995–2001": 70,
+  "2002–2008": 55,
+  "ab 2009": 35,
 };
 
 /** Vollbenutzungsstunden in Deutschland (Heizperiode) */
 const VBH = 2100;
 
-/** Trinkwarmwasser: ca. 0,2 kW pro Person */
+/**
+ * Trinkwarmwasser: ca. 0,2 kW pro Person — nur als Hinweis ausgewiesen.
+ * In die WP-Größen­empfehlung geht TWW NICHT mit ein, weil es üblicherweise
+ * über Pufferspeicher und WW-Speicher abgedeckt wird, nicht über die
+ * Auslegungs-Heizlast der Wärmepumpe.
+ */
 const TWW_PRO_PERSON_KW = 0.2;
 
 export type HeizlastInput = {
@@ -68,22 +79,25 @@ export function calcHeizlast(input: HeizlastInput): HeizlastEstimate {
   const heizlastByArea = wohn > 0 && spez ? (wohn * spez) / 1000 : null;
   const heizlastByConsumption = verbrauch > 0 ? (verbrauch / VBH) * 0.9 : null;
 
-  const candidates = [heizlastByArea, heizlastByConsumption].filter(
-    (v): v is number => v !== null && v > 0,
-  );
-  const heizlast =
-    candidates.length === 0
-      ? 0
-      : candidates.reduce((s, v) => s + v, 0) / candidates.length;
+  // Wenn beide Methoden vorliegen, hat der Verbrauchswert Vorrang — er
+  // spiegelt die tatsächliche Wärmeabnahme wider, während die m²-Methode
+  // eine theoretische Obergrenze nach Baualtersklasse ist.
+  let heizlast: number;
+  if (heizlastByConsumption !== null && heizlastByConsumption > 0) {
+    heizlast = heizlastByConsumption;
+  } else if (heizlastByArea !== null && heizlastByArea > 0) {
+    heizlast = heizlastByArea;
+  } else {
+    heizlast = 0;
+  }
 
   const tww = personen * TWW_PRO_PERSON_KW;
 
-  const total = heizlast + tww;
-  // Empfohlene WP-Größe ≈ Heizlast aufgerundet auf nächste Standardgröße (8/12/16/20)
+  // WP-Größe wird ausschließlich nach der Gebäude-Heizlast dimensioniert.
+  // TWW wird über Puffer/WW-Speicher abgefangen und fließt nicht in die
+  // Auslegung der WP-Leistung ein.
   const standardGroessen = [4, 6, 8, 10, 12, 14, 16, 18, 20, 25];
-  const empfohlen =
-    standardGroessen.find((g) => g >= total) ??
-    standardGroessen[standardGroessen.length - 1];
+  const empfohlen = nearestStandard(heizlast, standardGroessen);
 
   // Faustformeln Speicher
   const puffer = roundTo50(empfohlen * 40); // ~ 40 L/kW
@@ -99,6 +113,24 @@ export function calcHeizlast(input: HeizlastInput): HeizlastEstimate {
     pufferLiter: puffer,
     wwLiter: ww,
   };
+}
+
+/**
+ * Rundet auf die nächstgelegene Standardgröße. Bei Gleichstand wird zur
+ * kleineren Größe abgerundet (Überdimensionierung vermeiden).
+ */
+function nearestStandard(target: number, sizes: readonly number[]): number {
+  if (target <= 0) return sizes[0];
+  let best = sizes[0];
+  let bestDiff = Math.abs(sizes[0] - target);
+  for (const s of sizes) {
+    const d = Math.abs(s - target);
+    if (d < bestDiff || (d === bestDiff && s < best)) {
+      best = s;
+      bestDiff = d;
+    }
+  }
+  return best;
 }
 
 function round1(n: number): number {

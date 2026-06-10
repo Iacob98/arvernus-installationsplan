@@ -68,6 +68,10 @@ export function TemplateDialog({ open, onOpenChange, template, catalog }: Props)
       description: "",
       active: true,
       order: 0,
+      nennleistungKw: null,
+      warmwasserSpeicherLiter: null,
+      heizkreiseAnzahl: null,
+      mitSolar: false,
       components: [
         {
           type: "WAERMEPUMPE",
@@ -92,6 +96,10 @@ export function TemplateDialog({ open, onOpenChange, template, catalog }: Props)
         description: template.description ?? "",
         active: template.active,
         order: template.order,
+        nennleistungKw: template.nennleistungKw ?? null,
+        warmwasserSpeicherLiter: template.warmwasserSpeicherLiter ?? null,
+        heizkreiseAnzahl: template.heizkreiseAnzahl ?? null,
+        mitSolar: template.mitSolar ?? false,
         components: template.components.map((c) => ({
           id: c.id,
           type: c.type,
@@ -109,6 +117,10 @@ export function TemplateDialog({ open, onOpenChange, template, catalog }: Props)
         description: "",
         active: true,
         order: 0,
+        nennleistungKw: null,
+        warmwasserSpeicherLiter: null,
+        heizkreiseAnzahl: null,
+        mitSolar: false,
         components: [
           {
             type: "WAERMEPUMPE",
@@ -181,6 +193,67 @@ export function TemplateDialog({ open, onOpenChange, template, catalog }: Props)
                   {...register("description")}
                   placeholder="Wird auf der Schnellauswahl-Karte angezeigt"
                 />
+              </div>
+
+              <div className="border-t pt-3 mt-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">
+                  Matching-Spec (für Auto-Auswahl im Wizard)
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Leistung (kW)</Label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      placeholder="—"
+                      {...register("nennleistungKw", {
+                        setValueAs: (v) =>
+                          v === "" || v === null || v === undefined
+                            ? null
+                            : Number(v),
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Warmwasser (L)</Label>
+                    <Input
+                      type="number"
+                      step="50"
+                      placeholder="— / 200 / 300"
+                      {...register("warmwasserSpeicherLiter", {
+                        setValueAs: (v) =>
+                          v === "" || v === null || v === undefined
+                            ? null
+                            : Number(v),
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Heizkreise</Label>
+                    <Input
+                      type="number"
+                      step="1"
+                      placeholder="1 / 2"
+                      {...register("heizkreiseAnzahl", {
+                        setValueAs: (v) =>
+                          v === "" || v === null || v === undefined
+                            ? null
+                            : Number(v),
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Mit Solar</Label>
+                    <label className="flex items-center gap-2 h-9 px-3 border border-input rounded-md bg-background cursor-pointer">
+                      <input
+                        type="checkbox"
+                        {...register("mitSolar")}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-xs">Solarthermie</span>
+                    </label>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

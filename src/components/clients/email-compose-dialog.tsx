@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,8 @@ interface EmailComposeDialogProps {
   clientId: string;
   clientEmail: string | null;
   clientName: string;
+  initialSubject?: string;
+  initialBody?: string;
 }
 
 export function EmailComposeDialog({
@@ -29,10 +31,22 @@ export function EmailComposeDialog({
   clientId,
   clientEmail,
   clientName,
+  initialSubject,
+  initialBody,
 }: EmailComposeDialogProps) {
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+  const [subject, setSubject] = useState(initialSubject ?? "");
+  const [body, setBody] = useState(initialBody ?? "");
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!open) return;
+    // Seed compose state from the parent on each open. The state change is
+    // intentional here — it lets a "Reply" button preload Re: + body.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSubject(initialSubject ?? "");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBody(initialBody ?? "");
+  }, [open, initialSubject, initialBody]);
 
   function handleSend() {
     if (!subject || !body) return;

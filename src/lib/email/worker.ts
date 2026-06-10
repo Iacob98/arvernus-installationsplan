@@ -92,7 +92,7 @@ async function processEmailJob(job: Job<AnyEmailJobData>) {
     return processOfferReminderJob(job as Job<OfferReminderJobData>);
   }
 
-  const { emailLogId, to, subject, body } = job.data as EmailJobData;
+  const { emailLogId, to, subject, body, from } = job.data as EmailJobData;
 
   try {
     const company = await db.companySettings.findFirst();
@@ -126,7 +126,7 @@ async function processEmailJob(job: Job<AnyEmailJobData>) {
     }
 
     await smtpTransporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      from: from || process.env.SMTP_FROM || process.env.SMTP_USER,
       to: to.join(", "),
       subject,
       text: body,
