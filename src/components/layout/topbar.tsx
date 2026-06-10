@@ -9,7 +9,15 @@ export function Topbar() {
   const { data: session } = useSession();
 
   return (
-    <header className="sticky top-0 z-30 h-14 border-b bg-white flex items-center justify-between px-3 sm:px-4 md:px-6">
+    <header
+      className="sticky top-0 z-30 border-b bg-white flex items-center justify-between px-3 sm:px-4 md:px-6"
+      style={{
+        // iOS PWA standalone: push the bar below the Dynamic Island /
+        // status bar so the hamburger stays tappable.
+        paddingTop: "env(safe-area-inset-top)",
+        height: "calc(3.5rem + env(safe-area-inset-top))",
+      }}
+    >
       <MobileNav />
       <div className="hidden md:block" />
       <div className="flex items-center gap-2 md:gap-4">

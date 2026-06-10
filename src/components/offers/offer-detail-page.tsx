@@ -15,6 +15,8 @@ import {
   RefreshCcw,
   Send,
   Trash2,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { OfferDetailForClient } from "@/lib/actions/offers";
@@ -134,58 +136,104 @@ export function OfferDetailPage({ offer }: { offer: OfferDetailForClient }) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Button variant="ghost" size="icon" asChild className="shrink-0">
             <Link href={`/clients/${offer.clientId}`}>
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">{offer.offerNumber}</h1>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold">{offer.offerNumber}</h1>
               <Badge variant={STATUS_VARIANTS[offer.status]}>
                 {STATUS_LABELS[offer.status]}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">
               {offer.title} · {clientName}
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleRegenerate} disabled={pending}>
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRegenerate}
+            disabled={pending}
+            className="flex-1 sm:flex-initial"
+          >
             <RefreshCcw className="mr-2 h-4 w-4" /> PDF neu generieren
           </Button>
           {offer.pdfStoragePath && (
-            <Button variant="outline" asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="flex-1 sm:flex-initial"
+            >
               <a href={`/api/offers/${offer.id}/download`} download>
                 <Download className="mr-2 h-4 w-4" /> Herunterladen
               </a>
             </Button>
           )}
           {offer.status === "DRAFT" && (
-            <Button variant="ghost" onClick={handleDelete} disabled={pending}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDelete}
+              disabled={pending}
+              className="shrink-0"
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         <div className="lg:col-span-2 space-y-4">
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-md">
               {offer.pdfStoragePath ? (
-                <iframe
-                  title="Angebot PDF"
-                  src={`/api/offers/${offer.id}/download?inline=1`}
-                  className="w-full"
-                  style={{ height: "80vh" }}
-                />
+                <>
+                  {/* Mobile: PDF previews inside webview are unreliable on
+                      iOS Safari — show a tappable opener instead. */}
+                  <a
+                    href={`/api/offers/${offer.id}/download?inline=1`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="sm:hidden flex items-center justify-between gap-3 p-4 hover:bg-muted/40 active:bg-muted/60 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="h-10 w-10 rounded flex items-center justify-center text-white shrink-0"
+                        style={{ background: "var(--brand)" }}
+                      >
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm">
+                          PDF öffnen
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {offer.pdfFileName ?? `${offer.offerNumber}.pdf`}
+                        </div>
+                      </div>
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </a>
+
+                  <iframe
+                    title="Angebot PDF"
+                    src={`/api/offers/${offer.id}/download?inline=1`}
+                    className="hidden sm:block w-full"
+                    style={{ height: "80vh" }}
+                  />
+                </>
               ) : (
-                <div className="p-12 text-center text-muted-foreground">
+                <div className="p-8 sm:p-12 text-center text-sm text-muted-foreground">
                   PDF wird generiert. Klicken Sie auf „PDF neu generieren“.
                 </div>
               )}

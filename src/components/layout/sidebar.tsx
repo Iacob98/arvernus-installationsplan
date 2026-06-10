@@ -167,7 +167,14 @@ export function MobileNav() {
           <span className="sr-only">Menü</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 p-0">
+      <SheetContent
+        side="left"
+        className="w-72 p-0 flex flex-col"
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <LogoBlock />
         <NavLinks onNavigate={() => setOpen(false)} />
