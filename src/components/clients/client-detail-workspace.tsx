@@ -28,6 +28,7 @@ import { ClientStatus } from "@prisma/client";
 import { ClientPipeline } from "./client-pipeline";
 import { InquiryEditor } from "./inquiry-editor";
 import { CallLogSection, CallLogDialog } from "./call-log-section";
+import { EmailComposeDialog } from "./email-compose-dialog";
 import { OfferWizardDialog } from "@/components/offers/offer-wizard-dialog";
 import { OfferSection } from "@/components/offers/offer-section";
 import { ClientNotesSection } from "./client-notes-section";
@@ -77,6 +78,7 @@ export function ClientDetailWorkspace({
   const [, startTransition] = useTransition();
   const [showOfferWizard, setShowOfferWizard] = useState(false);
   const [showCallSheet, setShowCallSheet] = useState(false);
+  const [showEmailCompose, setShowEmailCompose] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSending, setNoteSending] = useState(false);
   const [tab, setTab] = useState("anfrage");
@@ -193,6 +195,16 @@ export function ClientDetailWorkspace({
             >
               <FileText className="h-4 w-4 mr-2" />
               Angebot erstellen
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full h-11 justify-start font-medium bg-card"
+              disabled={!client.email}
+              onClick={() => setShowEmailCompose(true)}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              {client.email ? "E-Mail senden" : "Keine E-Mail-Adresse"}
             </Button>
             {client.status === "ANGEBOT_VERSENDET" &&
               client.offers.some((o) => o.status === "SENT") && (
@@ -517,6 +529,14 @@ export function ClientDetailWorkspace({
         open={showCallSheet}
         onOpenChange={setShowCallSheet}
         clientId={client.id}
+      />
+
+      <EmailComposeDialog
+        open={showEmailCompose}
+        onOpenChange={setShowEmailCompose}
+        clientId={client.id}
+        clientEmail={client.email}
+        clientName={clientName}
       />
     </div>
   );

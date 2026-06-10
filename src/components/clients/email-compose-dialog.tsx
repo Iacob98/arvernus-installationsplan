@@ -6,29 +6,30 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail } from "lucide-react";
 import { sendEmailToClient } from "@/lib/actions/emails";
 import { toast } from "sonner";
 
 interface EmailComposeDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   clientId: string;
   clientEmail: string | null;
   clientName: string;
 }
 
 export function EmailComposeDialog({
+  open,
+  onOpenChange,
   clientId,
   clientEmail,
   clientName,
 }: EmailComposeDialogProps) {
-  const [open, setOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -42,7 +43,7 @@ export function EmailComposeDialog({
         toast.success("E-Mail wird gesendet");
         setSubject("");
         setBody("");
-        setOpen(false);
+        onOpenChange(false);
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Fehler beim Senden"
@@ -51,22 +52,16 @@ export function EmailComposeDialog({
     });
   }
 
-  if (!clientEmail) return null;
-
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Mail className="h-4 w-4 mr-2" />
-          E-Mail senden
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>E-Mail an {clientName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="text-sm text-muted-foreground">An: {clientEmail}</div>
+          <div className="text-sm text-muted-foreground">
+            An: {clientEmail ?? "—"}
+          </div>
           <div className="space-y-1.5">
             <Label>Betreff</Label>
             <Input
@@ -86,10 +81,13 @@ export function EmailComposeDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Abbrechen
           </Button>
-          <Button onClick={handleSend} disabled={isPending || !subject || !body}>
+          <Button
+            onClick={handleSend}
+            disabled={isPending || !subject || !body || !clientEmail}
+          >
             {isPending ? "Wird gesendet..." : "Senden"}
           </Button>
         </DialogFooter>
