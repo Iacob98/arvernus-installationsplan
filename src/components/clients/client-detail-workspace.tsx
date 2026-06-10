@@ -41,8 +41,16 @@ import {
   markClientImKontakt,
   markClientVerkauft,
   markClientNichtVerkauft,
+  assignClient,
   type ClientDetail,
 } from "@/lib/actions/clients";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { CatalogItemForClient } from "@/lib/actions/catalog";
 import type { OfferTemplate } from "@/lib/offer-templates";
 import { telHref } from "@/lib/tel";
@@ -69,12 +77,16 @@ interface Props {
   client: ClientDetail;
   catalog: CatalogItemForClient[];
   offerTemplates: OfferTemplate[];
+  users?: { id: string; name: string }[];
+  isAdmin?: boolean;
 }
 
 export function ClientDetailWorkspace({
   client,
   catalog,
   offerTemplates,
+  users = [],
+  isAdmin = false,
 }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -175,6 +187,47 @@ export function ClientDetailWorkspace({
           </div>
 
           <ClientPipeline status={client.status} />
+
+          {isAdmin && users.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Zugewiesen an
+              </div>
+              <Select
+                value={client.assignedToId ?? "UNASSIGNED"}
+                onValueChange={(v) =>
+                  startTransition(async () => {
+                    try {
+                      await assignClient(
+                        client.id,
+                        v === "UNASSIGNED" ? null : v,
+                      );
+                      toast.success("Zuweisung aktualisiert");
+                      router.refresh();
+                    } catch (e) {
+                      toast.error(
+                        e instanceof Error
+                          ? e.message
+                          : "Fehler beim Zuweisen",
+                      );
+                    }
+                  })
+                }
+              >
+                <SelectTrigger className="h-9 bg-card">
+                  <SelectValue placeholder="Nicht zugewiesen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UNASSIGNED">Nicht zugewiesen</SelectItem>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -481,6 +534,7 @@ export function ClientDetailWorkspace({
                 clientId={client.id}
                 offers={client.offers}
                 onNew={() => setShowOfferWizard(true)}
+                clientHasEmail={Boolean(client.email)}
               />
             </TabsContent>
             <TabsContent value="verlauf" className="mt-4 space-y-4">

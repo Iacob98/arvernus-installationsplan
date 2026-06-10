@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -212,6 +219,30 @@ function OfferWizardContent({
   });
 
   const positions = useFieldArray({ control, name: "positions" });
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const withScrollFreeze = useCallback((action: () => void) => {
+    const el = scrollContainerRef.current;
+    const top = el?.scrollTop ?? 0;
+    action();
+    // Run after React paints the newly-mounted input so its autofocus
+    // does not pull the viewport down. Two RAFs cover both flushSync
+    // and concurrent commits.
+    requestAnimationFrame(() => {
+      if (el) el.scrollTop = top;
+      requestAnimationFrame(() => {
+        if (el) el.scrollTop = top;
+      });
+    });
+  }, []);
+
+  // The scroll container is the SAME element for every step (its children
+  // swap). Without an explicit reset, navigating to a new step keeps the
+  // scrollTop from the previous step — making Step 1 (Positionen) start
+  // somewhere in the middle. Snap to top on every step change.
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTop = 0;
+  }, [step]);
   const discounts = useFieldArray({ control, name: "discounts" });
   const watchedPositionsRaw = useWatch({ control, name: "positions" });
   const watchedDiscountsRaw = useWatch({ control, name: "discounts" });
@@ -340,6 +371,7 @@ function OfferWizardContent({
         </DialogHeader>
 
         <div
+          ref={scrollContainerRef}
           className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4 space-y-4"
           onKeyDown={(e) => {
             if (
@@ -369,6 +401,7 @@ function OfferWizardContent({
               setValue={setValue}
               positions={watchedPositions}
               control={control}
+              withScrollFreeze={withScrollFreeze}
             />
           )}
           {step === 2 && (
@@ -848,6 +881,7 @@ interface PositionsStepProps {
   setValue: ReturnType<typeof useForm<CreateOfferData>>["setValue"];
   positions: CreateOfferData["positions"];
   control: ReturnType<typeof useForm<CreateOfferData>>["control"];
+  withScrollFreeze: (action: () => void) => void;
 }
 
 function PositionsStep({
@@ -860,6 +894,7 @@ function PositionsStep({
   setValue,
   positions,
   control,
+  withScrollFreeze,
 }: PositionsStepProps) {
   const [selectedItemId, setSelectedItemId] = useState<string>("");
   const [selectedVariantId, setSelectedVariantId] = useState<string>("");
@@ -951,20 +986,22 @@ function PositionsStep({
       toast.error("Keine passenden Positionen im Katalog gefunden");
       return;
     }
-    matches.forEach((m, idx) => {
-      append({
-        catalogItemVariantId: m.variant.id,
-        name: m.variant.name,
-        description: m.variant.description ?? "",
-        itemType: m.catalogItem.type,
-        manufacturer: m.catalogItem.manufacturer ?? "",
-        photoStoragePath: m.variant.photoStoragePath ?? null,
-        technicalData: Array.isArray(m.variant.technicalData)
-          ? (m.variant.technicalData as { key: string; value: string }[])
-          : [],
-        unitPrice: m.variant.price,
-        quantity: m.quantity,
-        order: fields.length + idx,
+    withScrollFreeze(() => {
+      matches.forEach((m, idx) => {
+        append({
+          catalogItemVariantId: m.variant.id,
+          name: m.variant.name,
+          description: m.variant.description ?? "",
+          itemType: m.catalogItem.type,
+          manufacturer: m.catalogItem.manufacturer ?? "",
+          photoStoragePath: m.variant.photoStoragePath ?? null,
+          technicalData: Array.isArray(m.variant.technicalData)
+            ? (m.variant.technicalData as { key: string; value: string }[])
+            : [],
+          unitPrice: m.variant.price,
+          quantity: m.quantity,
+          order: fields.length + idx,
+        });
       });
     });
     if (missing.length > 0) {
@@ -981,19 +1018,21 @@ function PositionsStep({
       toast.error("Position und Variante wählen");
       return;
     }
-    append({
-      catalogItemVariantId: selectedVariant.id,
-      name: selectedVariant.name,
-      description: selectedVariant.description ?? "",
-      itemType: selectedItem.type,
-      manufacturer: selectedItem.manufacturer ?? "",
-      photoStoragePath: selectedVariant.photoStoragePath ?? null,
-      technicalData: Array.isArray(selectedVariant.technicalData)
-        ? (selectedVariant.technicalData as { key: string; value: string }[])
-        : [],
-      unitPrice: selectedVariant.price,
-      quantity,
-      order: fields.length,
+    withScrollFreeze(() => {
+      append({
+        catalogItemVariantId: selectedVariant.id,
+        name: selectedVariant.name,
+        description: selectedVariant.description ?? "",
+        itemType: selectedItem.type,
+        manufacturer: selectedItem.manufacturer ?? "",
+        photoStoragePath: selectedVariant.photoStoragePath ?? null,
+        technicalData: Array.isArray(selectedVariant.technicalData)
+          ? (selectedVariant.technicalData as { key: string; value: string }[])
+          : [],
+        unitPrice: selectedVariant.price,
+        quantity,
+        order: fields.length,
+      });
     });
     setSelectedItemId("");
     setSelectedVariantId("");
@@ -1171,7 +1210,9 @@ function PositionsStep({
           {showCustom && (
             <CustomPositionForm
               onAdd={(data) => {
-                append({ ...data, order: fields.length });
+                withScrollFreeze(() => {
+                  append({ ...data, order: fields.length });
+                });
                 setShowCustom(false);
               }}
             />

@@ -610,7 +610,7 @@ function renderFoerderungPage(
       .join("");
 
     kfwBlock = `<div style="margin-top:16px;page-break-inside:avoid;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:18px;">
         <div style="flex:1;">
           <div style="font-size:13pt;font-weight:700;color:#111;">
             Förderprogramm Wärmepumpe – KfW Förderprogramm 458 – ${r.percent}&nbsp;%
@@ -629,7 +629,7 @@ function renderFoerderungPage(
         </div>
       </div>
 
-      ${boni}
+      <div style="margin-top:14px;">${boni}</div>
     </div>`;
   }
 

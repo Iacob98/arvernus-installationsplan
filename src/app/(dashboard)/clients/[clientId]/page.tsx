@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
 import { getClient } from "@/lib/actions/clients";
+import { getActiveUsers } from "@/lib/actions/users";
+import { auth } from "@/lib/auth";
 import { markInboundRead } from "@/lib/actions/emails";
 import {
   listActiveCatalogItems,
@@ -21,11 +23,14 @@ export default async function ClientDetailPage({
   params: Promise<{ clientId: string }>;
 }) {
   const { clientId } = await params;
+  const session = await auth();
+  const isAdmin = session?.user?.role === "ADMIN";
 
-  const [client, catalogRaw, templatesRaw] = await Promise.all([
+  const [client, catalogRaw, templatesRaw, usersRaw] = await Promise.all([
     getClient(clientId),
     listActiveCatalogItems(),
     listActiveOfferTemplates(),
+    isAdmin ? getActiveUsers() : Promise.resolve([]),
   ]);
   if (!client) notFound();
 
@@ -42,6 +47,8 @@ export default async function ClientDetailPage({
       client={client}
       catalog={catalog}
       offerTemplates={offerTemplates}
+      users={usersRaw}
+      isAdmin={isAdmin}
     />
   );
 }
