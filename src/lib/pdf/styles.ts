@@ -747,12 +747,16 @@ export function getPdfStyles(primaryColor: string, secondaryColor: string): stri
       font-weight: 700;
       color: #111;
       margin-bottom: 4px;
+      page-break-after: avoid;
+      break-after: avoid;
     }
 
     .offer-page-sub {
       font-size: 9.5pt;
       color: #666;
       margin-bottom: 18px;
+      page-break-after: avoid;
+      break-after: avoid;
     }
 
     .offer-section-label {
@@ -762,12 +766,19 @@ export function getPdfStyles(primaryColor: string, secondaryColor: string): stri
       letter-spacing: 0.06em;
       text-transform: uppercase;
       margin: 14px 0 10px;
+      page-break-after: avoid;
+      break-after: avoid;
     }
 
+    /*
+     * Position itself is allowed to break across pages — page-break-inside: avoid
+     * here used to push large positions onto the next page and leave the section
+     * header (Innengerät, etc.) alone. We keep break-inside on the position-head
+     * only so the number+title+manufacturer line stays together.
+     */
     .offer-position {
       border-top: 1px solid #eee;
       padding: 14px 0;
-      page-break-inside: avoid;
     }
 
     .offer-position-head {
@@ -776,6 +787,10 @@ export function getPdfStyles(primaryColor: string, secondaryColor: string): stri
       align-items: flex-start;
       gap: 16px;
       margin-bottom: 6px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      page-break-after: avoid;
+      break-after: avoid;
     }
 
     .offer-position-number {
