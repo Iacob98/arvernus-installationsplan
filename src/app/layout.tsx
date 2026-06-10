@@ -18,14 +18,9 @@ export const metadata: Metadata = {
     title: "Arvernus",
     statusBarStyle: "black-translucent",
   },
-  icons: {
-    icon: [
-      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: [{ url: "/icons/apple-icon.png", sizes: "180x180", type: "image/png" }],
-  },
+  // Icons resolve via Next.js file-based convention from src/app/icon.png
+  // and src/app/apple-icon.png — manual icon links are intentionally omitted
+  // so the file-based ones (highest priority) always win on iOS.
   formatDetection: {
     telephone: true,
     email: true,
