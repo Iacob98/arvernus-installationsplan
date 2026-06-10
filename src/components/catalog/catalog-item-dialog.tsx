@@ -4,12 +4,12 @@ import { useEffect, useTransition } from "react";
 import { useForm, useFieldArray, useWatch, useController } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  ResponsiveDialog as Dialog,
+  ResponsiveDialogContent as DialogContent,
+  ResponsiveDialogHeader as DialogHeader,
+  ResponsiveDialogTitle as DialogTitle,
+  ResponsiveDialogFooter as DialogFooter,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -149,7 +149,10 @@ export function CatalogItemDialog({ open, onOpenChange, item }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!max-w-[min(1100px,96vw)] w-[96vw] h-[92vh] flex flex-col p-0 gap-0">
+      <DialogContent
+        desktopMaxWidthClass="sm:!max-w-[min(1100px,96vw)] sm:w-[96vw] sm:h-[92vh]"
+        className="flex flex-col p-0 sm:p-0 gap-0"
+      >
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle>{item ? "Position bearbeiten" : "Neue Position"}</DialogTitle>
         </DialogHeader>

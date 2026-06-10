@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
@@ -9,8 +9,38 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Installationsplan — Arvernus Energy",
-  description: "PDF-Generator für Installationspläne",
+  title: "Arvernus Installationsplan",
+  description:
+    "CRM und Installationsplaner für Wärmepumpen-Projekte von Arvernus Meisterbetrieb.",
+  applicationName: "Arvernus Installationsplan",
+  appleWebApp: {
+    capable: true,
+    title: "Arvernus",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  formatDetection: {
+    telephone: true,
+    email: true,
+    address: false,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 };
 
 export default function RootLayout({

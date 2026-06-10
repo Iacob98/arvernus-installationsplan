@@ -3,13 +3,13 @@
 import { useState, useTransition } from "react";
 import { ClientStatus } from "@prisma/client";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  ResponsiveDialog as Dialog,
+  ResponsiveDialogContent as DialogContent,
+  ResponsiveDialogHeader as DialogHeader,
+  ResponsiveDialogTitle as DialogTitle,
+  ResponsiveDialogTrigger as DialogTrigger,
+  ResponsiveDialogFooter as DialogFooter,
+} from "@/components/ui/responsive-dialog";
 import {
   Select,
   SelectContent,

@@ -9,7 +9,7 @@ export function Topbar() {
   const { data: session } = useSession();
 
   return (
-    <header className="h-14 border-b bg-white flex items-center justify-between px-4 md:px-6">
+    <header className="sticky top-0 z-30 h-14 border-b bg-white flex items-center justify-between px-3 sm:px-4 md:px-6">
       <MobileNav />
       <div className="hidden md:block" />
       <div className="flex items-center gap-2 md:gap-4">

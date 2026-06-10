@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatDistanceToNowStrict, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { ClientStatus } from "@prisma/client";
+import { MobileStatusTabs } from "./mobile-status-tabs";
 import {
   Flame,
   Search,
@@ -56,7 +57,7 @@ export type KanbanClient = {
   assignedTo?: { id: string; name: string } | null;
 };
 
-const STATUS_ORDER: ClientStatus[] = [
+export const STATUS_ORDER: ClientStatus[] = [
   "NEU",
   "ANGERUFEN",
   "ANGEBOT_VERSENDET",
@@ -65,7 +66,7 @@ const STATUS_ORDER: ClientStatus[] = [
   "NICHT_VERKAUFT",
 ];
 
-const STATUS_LABELS: Record<ClientStatus, string> = {
+export const STATUS_LABELS: Record<ClientStatus, string> = {
   NEU: "Neu",
   ANGERUFEN: "Angerufen",
   ANGEBOT_VERSENDET: "Angebot versendet",
@@ -74,7 +75,7 @@ const STATUS_LABELS: Record<ClientStatus, string> = {
   NICHT_VERKAUFT: "Verloren",
 };
 
-const STATUS_COLORS: Record<ClientStatus, string> = {
+export const STATUS_COLORS: Record<ClientStatus, string> = {
   NEU: "#8b5cf6",
   ANGERUFEN: "#06b6d4",
   ANGEBOT_VERSENDET: "#d97706",
@@ -121,53 +122,62 @@ export function ClientsKanbanBoard({
 
   return (
     <div className="flex flex-col h-full">
-      <header className="shrink-0 border-b border-border/60 bg-card px-4 py-2.5 flex items-center gap-3 flex-wrap">
-        <div className="flex items-baseline gap-2 mr-auto">
+      <header className="shrink-0 border-b border-border/60 bg-card px-3 sm:px-4 py-2.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 sm:flex-wrap">
+        <div className="flex items-baseline gap-2 sm:mr-auto">
           <h1 className="text-base font-semibold tracking-tight">Pipeline</h1>
           <span className="font-mono text-xs tabular-nums text-muted-foreground">
             {clients.length}
             <span className="text-muted-foreground/60"> / {totalCount}</span>
           </span>
         </div>
-        <div className="relative w-64">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Name, Nummer, Stadt…"
-            className="h-8 pl-7 text-sm bg-transparent border border-border rounded-md focus-visible:ring-0 focus-visible:border-[var(--brand)]"
-          />
+        <div className="flex items-center gap-2 sm:contents">
+          <div className="relative flex-1 sm:flex-initial sm:w-64">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Name, Nummer, Stadt…"
+              className="h-9 sm:h-8 pl-7 bg-transparent border border-border rounded-md focus-visible:ring-0 focus-visible:border-[var(--brand)]"
+            />
+          </div>
+          {isAdmin && users && users.length > 0 && setAssignedFilter && (
+            <Select value={assignedFilter ?? "ALL"} onValueChange={setAssignedFilter}>
+              <SelectTrigger className="h-9 sm:h-8 w-32 sm:w-44 text-xs">
+                <Filter className="h-3 w-3 mr-1 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Alle Mitarbeiter</SelectItem>
+                <SelectItem value="UNASSIGNED">Nicht zugewiesen</SelectItem>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button
+            asChild
+            size="sm"
+            className="h-9 sm:h-8 text-xs shrink-0"
+            style={{ background: "var(--brand)", color: "var(--brand-foreground)" }}
+          >
+            <Link href="/clients/new" aria-label="Neuer Kunde">
+              <Plus className="h-3.5 w-3.5 sm:mr-1" />
+              <span className="hidden sm:inline">Neuer Kunde</span>
+            </Link>
+          </Button>
         </div>
-        {isAdmin && users && users.length > 0 && setAssignedFilter && (
-          <Select value={assignedFilter ?? "ALL"} onValueChange={setAssignedFilter}>
-            <SelectTrigger className="h-8 w-44 text-xs">
-              <Filter className="h-3 w-3 mr-1 text-muted-foreground" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Alle Mitarbeiter</SelectItem>
-              <SelectItem value="UNASSIGNED">Nicht zugewiesen</SelectItem>
-              {users.map((u) => (
-                <SelectItem key={u.id} value={u.id}>
-                  {u.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        <Button
-          asChild
-          size="sm"
-          className="h-8 text-xs"
-          style={{ background: "var(--brand)", color: "var(--brand-foreground)" }}
-        >
-          <Link href="/clients/new">
-            <Plus className="h-3.5 w-3.5 mr-1" /> Neuer Kunde
-          </Link>
-        </Button>
       </header>
 
-      <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
+      {/* Mobile: status-tabs (one column at full width) */}
+      <div className="flex-1 min-h-0 sm:hidden">
+        <MobileStatusTabs grouped={grouped} isAdmin={isAdmin} />
+      </div>
+
+      {/* Tablet/desktop: horizontal scroll across all columns */}
+      <div className="hidden sm:block flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
         <div className="flex gap-3 h-full px-3 pt-3 pb-2 min-w-max">
           {STATUS_ORDER.map((status) => {
             const items = grouped[status];
@@ -212,20 +222,22 @@ export function ClientsKanbanBoard({
   );
 }
 
-function Column({
+export function Column({
   status,
   items,
   isAdmin,
   onCollapse,
+  widthClass = "shrink-0 w-[280px]",
 }: {
   status: ClientStatus;
   items: KanbanClient[];
   isAdmin?: boolean;
   onCollapse?: () => void;
+  widthClass?: string;
 }) {
   const color = STATUS_COLORS[status];
   return (
-    <div className="shrink-0 w-[280px] flex flex-col h-full bg-card border border-border/70 rounded-md overflow-hidden">
+    <div className={`${widthClass} flex flex-col h-full bg-card border border-border/70 rounded-md overflow-hidden`}>
       <div
         className="shrink-0 px-3 pt-2.5 pb-2 flex items-center gap-2 border-b border-border/60"
         style={{ borderTop: `3px solid ${color}` }}

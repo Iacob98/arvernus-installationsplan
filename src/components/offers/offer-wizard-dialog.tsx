@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  ResponsiveDialog as Dialog,
+  ResponsiveDialogContent as DialogContent,
+  ResponsiveDialogHeader as DialogHeader,
+  ResponsiveDialogTitle as DialogTitle,
+  ResponsiveDialogFooter as DialogFooter,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -328,16 +328,19 @@ function OfferWizardContent({
 
   return (
     <>
-      <DialogContent className="!max-w-[min(1200px,96vw)] w-[96vw] h-[92vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-6 py-4 border-b shrink-0">
-          <DialogTitle>Neues Angebot — {clientName}</DialogTitle>
-          <div className="pt-3">
+      <DialogContent
+        desktopMaxWidthClass="sm:!max-w-[min(1200px,96vw)] sm:w-[96vw] sm:h-[92vh]"
+        className="flex flex-col p-0 sm:p-0 gap-0"
+      >
+        <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b shrink-0">
+          <DialogTitle className="text-base sm:text-lg">Neues Angebot — {clientName}</DialogTitle>
+          <div className="pt-2 sm:pt-3">
             <Stepper step={step} />
           </div>
         </DialogHeader>
 
         <div
-          className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+          className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4 space-y-4"
           onKeyDown={(e) => {
             if (
               e.key === "Enter" &&
@@ -398,7 +401,7 @@ function OfferWizardContent({
           )}
         </div>
 
-        <DialogFooter className="flex justify-between px-6 py-3 border-t shrink-0">
+        <DialogFooter className="flex justify-between px-4 sm:px-6 py-3 border-t shrink-0">
           <div>
             {step > 0 && (
               <Button variant="outline" onClick={() => setStep((s) => s - 1)} disabled={pending}>
@@ -440,25 +443,41 @@ function OfferWizardContent({
 
 function Stepper({ step }: { step: number }) {
   return (
-    <div className="flex items-center gap-2 text-sm">
-      {STEPS.map((label, idx) => (
-        <div key={label} className="flex items-center gap-2">
-          <div
-            className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${
-              idx === step
-                ? "bg-primary text-primary-foreground"
-                : idx < step
-                  ? "bg-primary/30 text-primary"
-                  : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {idx + 1}
-          </div>
-          <span className={idx === step ? "font-medium" : "text-muted-foreground"}>{label}</span>
-          {idx < STEPS.length - 1 && <span className="text-muted-foreground">›</span>}
+    <>
+      {/* Mobile: compact 'Schritt N von M: Label' */}
+      <div className="sm:hidden flex items-center gap-2 text-xs">
+        <div
+          className="flex h-6 w-6 items-center justify-center rounded-full text-xs bg-primary text-primary-foreground shrink-0"
+        >
+          {step + 1}
         </div>
-      ))}
-    </div>
+        <span className="text-muted-foreground shrink-0">
+          Schritt {step + 1} von {STEPS.length}:
+        </span>
+        <span className="font-medium truncate">{STEPS[step]}</span>
+      </div>
+
+      {/* Desktop: full horizontal stepper */}
+      <div className="hidden sm:flex items-center gap-2 text-sm">
+        {STEPS.map((label, idx) => (
+          <div key={label} className="flex items-center gap-2">
+            <div
+              className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${
+                idx === step
+                  ? "bg-primary text-primary-foreground"
+                  : idx < step
+                    ? "bg-primary/30 text-primary"
+                    : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {idx + 1}
+            </div>
+            <span className={idx === step ? "font-medium" : "text-muted-foreground"}>{label}</span>
+            {idx < STEPS.length - 1 && <span className="text-muted-foreground">›</span>}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -469,6 +488,12 @@ interface RHF {
   setValue: ReturnType<typeof useForm<CreateOfferData>>["setValue"];
 }
 
+type InquirySection =
+  | "Gebäude"
+  | "Heizung"
+  | "Warmwasser & Solar"
+  | "Verbrauch & Sonstiges";
+
 const INQUIRY_FIELDS: {
   key: keyof CreateOfferData["inquiry"];
   label: string;
@@ -478,10 +503,12 @@ const INQUIRY_FIELDS: {
   max?: number;
   step?: number;
   chips?: string[];
+  section: InquirySection;
   condition?: (
     inq: Partial<CreateOfferData["inquiry"]> | undefined,
   ) => boolean;
 }[] = [
+  // Gebäude
   {
     key: "wohnflaecheM2",
     label: "Beheizte Wohnfläche (m²)",
@@ -489,14 +516,7 @@ const INQUIRY_FIELDS: {
     numeric: true,
     min: 0,
     step: 1,
-  },
-  {
-    key: "annualKwhGas",
-    label: "Jahresverbrauch (kWh / L)",
-    placeholder: "z. B. 25000",
-    numeric: true,
-    min: 0,
-    step: 1,
+    section: "Gebäude",
   },
   {
     key: "wohneinheiten",
@@ -505,12 +525,14 @@ const INQUIRY_FIELDS: {
     numeric: true,
     min: 1,
     step: 1,
+    section: "Gebäude",
   },
   {
     key: "constructionYear",
     label: "Baujahr / Dämmstandard",
     placeholder: "z. B. 1985 / saniert",
     chips: [...BAUJAHR_CHIPS],
+    section: "Gebäude",
   },
   {
     key: "householdSize",
@@ -519,18 +541,37 @@ const INQUIRY_FIELDS: {
     numeric: true,
     min: 1,
     step: 1,
+    section: "Gebäude",
   },
+  // Heizung
   {
     key: "heizsystem",
     label: "Heizsystem",
     placeholder: "Eigene Antwort…",
     chips: ["Heizkörper", "Fußbodenheizung", "Kombination", "Konvektoren"],
+    section: "Heizung",
   },
+  {
+    key: "currentHeating",
+    label: "Aktueller Heizungstyp",
+    placeholder: "Hersteller, Modell…",
+    chips: ["Gasheizung", "Ölheizung", "Holz / Pellet", "Stromheizung", "Fernwärme"],
+    section: "Heizung",
+  },
+  {
+    key: "heatingAge",
+    label: "Alter / Baujahr der Heizung",
+    placeholder: "z. B. installiert 2008",
+    chips: ["< 10 Jahre", "10–20 Jahre", "20–30 Jahre", "> 30 Jahre"],
+    section: "Heizung",
+  },
+  // Warmwasser & Solar
   {
     key: "hotWaterIncluded",
     label: "Warmwasser durch Wärmepumpe?",
     placeholder: "Eigene Antwort…",
     chips: ["Ja", "Nein", "Mit Heizstab"],
+    section: "Warmwasser & Solar",
   },
   {
     key: "warmwasserSpeicherLiter",
@@ -538,31 +579,39 @@ const INQUIRY_FIELDS: {
     placeholder: "Auswahl…",
     chips: ["200", "300"],
     condition: (inq) => inq?.hotWaterIncluded === "Ja",
+    section: "Warmwasser & Solar",
   },
   {
     key: "solarthermieVorhanden",
     label: "Solarthermie vorhanden?",
     placeholder: "Auswahl…",
     chips: ["Ja", "Nein"],
+    section: "Warmwasser & Solar",
   },
+  // Verbrauch & Sonstiges
   {
-    key: "currentHeating",
-    label: "Aktueller Heizungstyp",
-    placeholder: "Hersteller, Modell…",
-    chips: ["Gasheizung", "Ölheizung", "Holz / Pellet", "Stromheizung", "Fernwärme"],
-  },
-  {
-    key: "heatingAge",
-    label: "Alter / Baujahr der Heizung",
-    placeholder: "z. B. installiert 2008",
-    chips: ["< 10 Jahre", "10–20 Jahre", "20–30 Jahre", "> 30 Jahre"],
+    key: "annualKwhGas",
+    label: "Jahresverbrauch (kWh / L)",
+    placeholder: "z. B. 25000",
+    numeric: true,
+    min: 0,
+    step: 1,
+    section: "Verbrauch & Sonstiges",
   },
   {
     key: "incomeRange",
     label: "Haushaltseinkommen / Jahr",
     placeholder: "Eigene Antwort…",
     chips: ["unter 40.000 €", "über 40.000 €"],
+    section: "Verbrauch & Sonstiges",
   },
+];
+
+const INQUIRY_SECTIONS: InquirySection[] = [
+  "Gebäude",
+  "Heizung",
+  "Warmwasser & Solar",
+  "Verbrauch & Sonstiges",
 ];
 
 function InquiryStep({ register, control, setValue }: RHF) {
@@ -571,45 +620,58 @@ function InquiryStep({ register, control, setValue }: RHF) {
     (f) => !f.condition || f.condition(inquiry),
   );
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Anfragedaten</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {visibleFields.map((f) => (
-              <div key={f.key} className="space-y-1">
-                <Label className="text-xs">{f.label}</Label>
-                {f.chips ? (
-                  <InquiryChipField
-                    name={`inquiry.${f.key}` as const}
-                    chips={f.chips}
-                    placeholder={f.placeholder}
-                    control={control}
-                    setValue={setValue}
-                    register={register}
-                  />
-                ) : (
-                  <Input
-                    {...register(`inquiry.${f.key}`)}
-                    placeholder={f.placeholder}
-                    type={f.numeric ? "number" : "text"}
-                    inputMode={f.numeric ? "numeric" : undefined}
-                    min={f.min}
-                    max={f.max}
-                    step={f.step}
-                  />
-                )}
+    <div className="space-y-3 sm:space-y-4">
+      {INQUIRY_SECTIONS.map((section) => {
+        const fields = visibleFields.filter((f) => f.section === section);
+        if (fields.length === 0) return null;
+        return (
+          <Card key={section}>
+            <CardHeader className="py-3 sm:py-4">
+              <CardTitle className="text-sm sm:text-base font-semibold">
+                {section}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {fields.map((f) => (
+                  <div key={f.key} className="space-y-1.5">
+                    <Label className="text-sm font-medium">{f.label}</Label>
+                    {f.chips ? (
+                      <InquiryChipField
+                        name={`inquiry.${f.key}` as const}
+                        chips={f.chips}
+                        placeholder={f.placeholder}
+                        control={control}
+                        setValue={setValue}
+                        register={register}
+                      />
+                    ) : (
+                      <Input
+                        {...register(`inquiry.${f.key}`)}
+                        placeholder={f.placeholder}
+                        type={f.numeric ? "number" : "text"}
+                        inputMode={f.numeric ? "numeric" : undefined}
+                        min={f.min}
+                        max={f.max}
+                        step={f.step}
+                        className="h-10 sm:h-9"
+                      />
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Zusätzliche Informationen</Label>
-            <Textarea rows={3} {...register("inquiry.additionalInfo")} />
-          </div>
-        </CardContent>
-      </Card>
+              {section === "Verbrauch & Sonstiges" && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium">
+                    Zusätzliche Informationen
+                  </Label>
+                  <Textarea rows={3} {...register("inquiry.additionalInfo")} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
       <HeizlastWidget control={control} />
     </div>
   );
@@ -742,8 +804,8 @@ function InquiryChipField({
   const current = (useWatch({ control, name }) as string | null | undefined) ?? "";
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex flex-wrap gap-1">
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5">
         {chips.map((chip) => {
           const active = current === chip;
           return (
@@ -756,10 +818,10 @@ function InquiryChipField({
                   shouldTouch: true,
                 })
               }
-              className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+              className={`text-sm px-3 py-2 sm:px-2.5 sm:py-1.5 rounded-full border transition-colors min-h-10 sm:min-h-8 ${
                 active
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background hover:bg-muted border-border text-foreground"
+                  ? "bg-primary text-primary-foreground border-primary font-medium"
+                  : "bg-background hover:bg-muted active:bg-muted border-border text-foreground"
               }`}
             >
               {chip}
@@ -770,7 +832,7 @@ function InquiryChipField({
       <Input
         {...register(name)}
         placeholder={placeholder}
-        className="h-8 text-sm"
+        className="h-10 sm:h-9"
       />
     </div>
   );
@@ -2024,36 +2086,40 @@ function ServicesCard({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle className="text-base">
-            Dienstleistungen ({enabledCount} / {services.length})
-          </CardTitle>
-          <p className="text-xs text-muted-foreground mt-1">
-            Auswählen, Menge und Einzelpreis bei Bedarf anpassen. Erscheinen als
-            eigene Gruppe in den Bestandteilen.
-          </p>
-        </div>
-        <div className="flex gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => selectAll(true)}
-          >
-            Alle
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => selectAll(false)}
-          >
-            Keine
-          </Button>
+      <CardHeader className="py-3 sm:py-4">
+        <div className="flex flex-row items-start sm:items-center justify-between gap-2">
+          <div className="min-w-0">
+            <CardTitle className="text-sm sm:text-base">
+              Dienstleistungen ({enabledCount} / {services.length})
+            </CardTitle>
+            <p className="hidden sm:block text-xs text-muted-foreground mt-1">
+              Auswählen, Menge und Einzelpreis bei Bedarf anpassen. Erscheinen
+              als eigene Gruppe in den Bestandteilen.
+            </p>
+          </div>
+          <div className="flex gap-1 shrink-0">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs"
+              onClick={() => selectAll(true)}
+            >
+              Alle
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs"
+              onClick={() => selectAll(false)}
+            >
+              Keine
+            </Button>
+          </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-2 pt-0">
         {services.map((s, idx) => {
           const isCustom = isCustomServiceId(s.presetId);
           const preset = isCustom
@@ -2065,12 +2131,13 @@ function ServicesCard({
           return (
             <div
               key={s.presetId}
-              className={`rounded-md border p-3 ${s.enabled ? "" : "opacity-60"}`}
+              className={`rounded-md border p-2.5 sm:p-3 ${s.enabled ? "" : "opacity-60"}`}
             >
-              <div className="flex items-start gap-3">
+              {/* Row 1: checkbox + name + trash */}
+              <div className="flex items-start gap-2 sm:gap-3">
                 <input
                   type="checkbox"
-                  className="mt-1"
+                  className="mt-1 h-4 w-4 shrink-0"
                   checked={s.enabled}
                   onChange={(e) => update(idx, { enabled: e.target.checked })}
                 />
@@ -2080,72 +2147,87 @@ function ServicesCard({
                       value={s.customName ?? ""}
                       onChange={(e) => update(idx, { customName: e.target.value })}
                       placeholder="Bezeichnung"
-                      className="h-7 text-sm font-medium mb-1"
+                      className="h-9 sm:h-7 text-sm font-medium"
                     />
                   ) : (
-                    <div className="text-sm font-medium">{name}</div>
+                    <div className="text-sm font-medium leading-tight">
+                      {name}
+                    </div>
                   )}
-                  {isCustom ? (
-                    <Textarea
-                      value={s.customDescription ?? ""}
-                      onChange={(e) =>
-                        update(idx, { customDescription: e.target.value })
-                      }
-                      placeholder="Beschreibung (optional)"
-                      rows={2}
-                      className="text-xs"
-                    />
-                  ) : (
-                    description && (
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                        {description}
-                      </p>
-                    )
-                  )}
+                  {/* Description: hidden on mobile to keep cards short */}
+                  <div className="hidden sm:block mt-1">
+                    {isCustom ? (
+                      <Textarea
+                        value={s.customDescription ?? ""}
+                        onChange={(e) =>
+                          update(idx, { customDescription: e.target.value })
+                        }
+                        placeholder="Beschreibung (optional)"
+                        rows={2}
+                        className="text-xs"
+                      />
+                    ) : (
+                      description && (
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {description}
+                        </p>
+                      )
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-end gap-2 shrink-0">
-                  <div className="space-y-1">
-                    <Label className="text-[10px]">Menge</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={s.quantity}
-                      onChange={(e) =>
-                        update(idx, { quantity: Math.max(0, Number(e.target.value) || 0) })
-                      }
-                      className="w-20 h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px]">Preis (€)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={s.unitPrice}
-                      onChange={(e) =>
-                        update(idx, {
-                          unitPrice: Math.max(0, Number(e.target.value) || 0),
-                        })
-                      }
-                      className="w-28 h-8 text-sm"
-                    />
-                  </div>
-                  <div className="text-sm font-semibold w-28 text-right whitespace-nowrap pb-1">
-                    {fmtEUR(s.quantity * s.unitPrice)}
-                  </div>
-                  {isCustom && (
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => removeAt(idx)}
-                      className="h-8 w-8"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
+                {isCustom && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeAt(idx)}
+                    className="h-8 w-8 shrink-0"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Row 2: compact menge / preis / sum line */}
+              <div className="mt-2 sm:mt-3 grid grid-cols-[1fr_1fr_auto] sm:grid-cols-[80px_112px_1fr] gap-2 items-end">
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Menge
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    inputMode="numeric"
+                    value={s.quantity}
+                    onChange={(e) =>
+                      update(idx, {
+                        quantity: Math.max(0, Number(e.target.value) || 0),
+                      })
+                    }
+                    className="h-9 sm:h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Preis (€)
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    inputMode="decimal"
+                    value={s.unitPrice}
+                    onChange={(e) =>
+                      update(idx, {
+                        unitPrice: Math.max(0, Number(e.target.value) || 0),
+                      })
+                    }
+                    className="h-9 sm:h-8 text-sm"
+                  />
+                </div>
+                <div className="text-sm font-semibold text-right whitespace-nowrap pb-1.5 self-end">
+                  {fmtEUR(s.quantity * s.unitPrice)}
                 </div>
               </div>
             </div>

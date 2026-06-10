@@ -43,16 +43,31 @@ const tabsListVariants = cva(
 function TabsList({
   className,
   variant = "default",
+  scrollable = false,
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List> &
-  VariantProps<typeof tabsListVariants>) {
-  return (
+  VariantProps<typeof tabsListVariants> & {
+    /** When true, wraps the list in a horizontally scrollable container — used
+     * on mobile when many tabs would otherwise overflow off-screen. */
+    scrollable?: boolean
+  }) {
+  const list = (
     <TabsPrimitive.List
       data-slot="tabs-list"
       data-variant={variant}
-      className={cn(tabsListVariants({ variant }), className)}
+      className={cn(
+        tabsListVariants({ variant }),
+        scrollable && "flex-nowrap w-max max-w-none",
+        className
+      )}
       {...props}
     />
+  )
+  if (!scrollable) return list
+  return (
+    <div className="-mx-3 px-3 overflow-x-auto overflow-y-hidden">
+      {list}
+    </div>
   )
 }
 

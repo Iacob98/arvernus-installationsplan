@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useTransition } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+  ResponsiveDialog as Dialog,
+  ResponsiveDialogContent as DialogContent,
+  ResponsiveDialogHeader as DialogHeader,
+  ResponsiveDialogTitle as DialogTitle,
+  ResponsiveDialogFooter as DialogFooter,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,11 +40,9 @@ export function EmailComposeDialog({
 
   useEffect(() => {
     if (!open) return;
-    // Seed compose state from the parent on each open. The state change is
-    // intentional here — it lets a "Reply" button preload Re: + body.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Seed compose state from the parent on each open — lets a "Reply" button
+    // preload Re: + body.
     setSubject(initialSubject ?? "");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBody(initialBody ?? "");
   }, [open, initialSubject, initialBody]);
 

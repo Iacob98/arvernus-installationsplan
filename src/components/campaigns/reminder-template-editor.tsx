@@ -150,7 +150,7 @@ export function ReminderTemplateEditor({
             <iframe
               srcDoc={previewHtml}
               sandbox=""
-              className="w-full h-[600px] border rounded bg-white"
+              className="w-full h-[400px] sm:h-[500px] lg:h-[600px] border rounded bg-white"
               title={`Vorschau Schritt ${step}`}
             />
           </CardContent>

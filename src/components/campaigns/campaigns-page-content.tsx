@@ -57,7 +57,7 @@ export function CampaignsPageContent({
       </div>
 
       <Tabs defaultValue="templates">
-        <TabsList>
+        <TabsList scrollable>
           <TabsTrigger value="templates">Vorlagen</TabsTrigger>
           <TabsTrigger value="campaigns">Kampagnen</TabsTrigger>
           {isAdmin && (

@@ -96,7 +96,11 @@ export function calcHeizlast(input: HeizlastInput): HeizlastEstimate {
   // WP-Größe wird ausschließlich nach der Gebäude-Heizlast dimensioniert.
   // TWW wird über Puffer/WW-Speicher abgefangen und fließt nicht in die
   // Auslegung der WP-Leistung ein.
-  const standardGroessen = [4, 6, 8, 10, 12, 14, 16, 18, 20, 25];
+  //
+  // Standardgrößen (kW) gemäß den im Katalog verfügbaren Wärmepumpen.
+  // Bei einer Heizlast genau zwischen zwei Größen wird die kleinere
+  // gewählt, um Überdimensionierung zu vermeiden (siehe nearestStandard).
+  const standardGroessen = [5, 7, 10, 11, 12, 13, 15];
   const empfohlen = nearestStandard(heizlast, standardGroessen);
 
   // Faustformeln Speicher

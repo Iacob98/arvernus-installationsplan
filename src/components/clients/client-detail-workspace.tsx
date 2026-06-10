@@ -45,6 +45,7 @@ import {
 } from "@/lib/actions/clients";
 import type { CatalogItemForClient } from "@/lib/actions/catalog";
 import type { OfferTemplate } from "@/lib/offer-templates";
+import { telHref } from "@/lib/tel";
 
 const STATUS_COLORS: Record<ClientStatus, string> = {
   NEU: "#8b5cf6",
@@ -130,7 +131,7 @@ export function ClientDetailWorkspace({
     <div className="min-h-[calc(100vh-7rem)]">
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr]">
         <aside
-          className="lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto border-r border-border/60 px-4 py-5 flex flex-col gap-5"
+          className="lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto border-r border-border/60 px-3 py-3 lg:px-4 lg:py-5 flex flex-col gap-3 lg:gap-5"
           style={{ background: "var(--brand-muted)" }}
         >
           <div>
@@ -181,7 +182,7 @@ export function ClientDetailWorkspace({
             </div>
             <Button
               size="lg"
-              className="w-full h-11 justify-start font-medium"
+              className="w-full h-10 lg:h-11 justify-start font-medium"
               style={{ background: "var(--brand)", color: "var(--brand-foreground)" }}
               onClick={() => setShowCallSheet(true)}
             >
@@ -191,7 +192,7 @@ export function ClientDetailWorkspace({
             <Button
               size="lg"
               variant="outline"
-              className="w-full h-11 justify-start font-medium bg-card"
+              className="w-full h-10 lg:h-11 justify-start font-medium bg-card"
               style={{
                 color: "var(--brand)",
                 borderColor: "color-mix(in srgb, var(--brand) 35%, transparent)",
@@ -204,7 +205,7 @@ export function ClientDetailWorkspace({
             <Button
               size="lg"
               variant="outline"
-              className="w-full h-11 justify-start font-medium bg-card"
+              className="w-full h-10 lg:h-11 justify-start font-medium bg-card"
               disabled={!client.email}
               onClick={() => setShowEmailCompose(true)}
             >
@@ -216,7 +217,7 @@ export function ClientDetailWorkspace({
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full h-11 justify-start font-medium bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/30 dark:hover:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-900"
+                  className="w-full h-10 lg:h-11 justify-start font-medium bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/30 dark:hover:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-900"
                   onClick={() => {
                     startTransition(async () => {
                       try {
@@ -244,7 +245,7 @@ export function ClientDetailWorkspace({
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-11 font-medium bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900"
+                    className="h-10 lg:h-11 font-medium bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900"
                     onClick={() => {
                       startTransition(async () => {
                         try {
@@ -267,7 +268,7 @@ export function ClientDetailWorkspace({
                   <Button
                     size="lg"
                     variant="outline"
-                    className="h-11 font-medium bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-950/30 dark:hover:bg-zinc-950/50 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800"
+                    className="h-10 lg:h-11 font-medium bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-950/30 dark:hover:bg-zinc-950/50 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800"
                     onClick={() => {
                       if (
                         !confirm(
@@ -329,12 +330,21 @@ export function ClientDetailWorkspace({
                 </div>
               )}
               {client.phone ? (
-                <div className="flex items-center gap-2">
-                  <Phone className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <a href={`tel:${client.phone}`} className="hover:underline">
-                    {client.phone}
-                  </a>
-                </div>
+                (() => {
+                  const href = telHref(client.phone);
+                  return (
+                    <a
+                      href={href ?? "#"}
+                      className="flex items-center gap-2 -mx-1 px-1 py-1.5 sm:py-0 rounded hover:bg-primary/5 active:bg-primary/10"
+                      style={{ color: "var(--brand)" }}
+                    >
+                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-medium tracking-tight">
+                        {client.phone}
+                      </span>
+                    </a>
+                  );
+                })()
               ) : (
                 <div className="flex items-center gap-2 text-muted-foreground/60">
                   <Phone className="h-3.5 w-3.5 shrink-0" /> Keine Telefonnummer
@@ -438,7 +448,10 @@ export function ClientDetailWorkspace({
           </section>
 
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="w-full justify-start bg-transparent border-b border-border/60 rounded-none h-auto p-0 gap-1">
+            <TabsList
+              scrollable
+              className="justify-start bg-transparent border-b border-border/60 rounded-none h-auto p-0 gap-1"
+            >
               {[
                 { v: "anfrage", l: "Anfrage" },
                 { v: "anrufe", l: `Anrufe (${client.callLogs.length})` },
