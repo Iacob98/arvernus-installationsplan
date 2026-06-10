@@ -101,6 +101,8 @@ interface ClientInquiry {
   householdSize: string | null;
   heizsystem: string | null;
   hotWaterIncluded: string | null;
+  warmwasserSpeicherLiter: string | null;
+  solarthermieVorhanden: string | null;
   currentHeating: string | null;
   heatingAge: string | null;
   incomeRange: string | null;
@@ -183,6 +185,8 @@ function OfferWizardContent({
         householdSize: inquiry.householdSize ?? "",
         heizsystem: inquiry.heizsystem ?? "",
         hotWaterIncluded: inquiry.hotWaterIncluded ?? "",
+        warmwasserSpeicherLiter: inquiry.warmwasserSpeicherLiter ?? "",
+        solarthermieVorhanden: inquiry.solarthermieVorhanden ?? "",
         currentHeating: inquiry.currentHeating ?? "",
         heatingAge: inquiry.heatingAge ?? "",
         incomeRange: inquiry.incomeRange ?? "",
@@ -290,6 +294,7 @@ function OfferWizardContent({
       const inquiry = getValues("inquiry") ?? {};
       const missing: string[] = [];
       for (const f of INQUIRY_FIELDS) {
+        if (f.condition && !f.condition(inquiry)) continue;
         const v = (inquiry as Record<string, unknown>)[f.key];
         if (v == null || v === "" || (typeof v === "string" && !v.trim())) {
           missing.push(f.label);
@@ -468,6 +473,9 @@ const INQUIRY_FIELDS: {
   max?: number;
   step?: number;
   chips?: string[];
+  condition?: (
+    inq: Partial<CreateOfferData["inquiry"]> | undefined,
+  ) => boolean;
 }[] = [
   {
     key: "wohnflaecheM2",
@@ -520,6 +528,19 @@ const INQUIRY_FIELDS: {
     chips: ["Ja", "Nein", "Mit Heizstab"],
   },
   {
+    key: "warmwasserSpeicherLiter",
+    label: "Warmwasserspeicher (Liter)",
+    placeholder: "Auswahl…",
+    chips: ["200", "300"],
+    condition: (inq) => inq?.hotWaterIncluded === "Ja",
+  },
+  {
+    key: "solarthermieVorhanden",
+    label: "Solarthermie vorhanden?",
+    placeholder: "Auswahl…",
+    chips: ["Ja", "Nein"],
+  },
+  {
     key: "currentHeating",
     label: "Aktueller Heizungstyp",
     placeholder: "Hersteller, Modell…",
@@ -540,6 +561,10 @@ const INQUIRY_FIELDS: {
 ];
 
 function InquiryStep({ register, control, setValue }: RHF) {
+  const inquiry = useWatch({ control, name: "inquiry" });
+  const visibleFields = INQUIRY_FIELDS.filter(
+    (f) => !f.condition || f.condition(inquiry),
+  );
   return (
     <div className="space-y-4">
       <Card>
@@ -548,7 +573,7 @@ function InquiryStep({ register, control, setValue }: RHF) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {INQUIRY_FIELDS.map((f) => (
+            {visibleFields.map((f) => (
               <div key={f.key} className="space-y-1">
                 <Label className="text-xs">{f.label}</Label>
                 {f.chips ? (

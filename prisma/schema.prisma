@@ -158,6 +158,8 @@ model Client {
   currentFuel      String?
   heatingAge       String?
   hotWaterIncluded String?
+  warmwasserSpeicherLiter String?
+  solarthermieVorhanden String?
   timeframe        String?
   availability     String?
   annualKwhGas     String?

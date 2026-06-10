@@ -32,6 +32,8 @@ export const clientSchema = z.object({
   currentFuel: z.string().nullable().optional(),
   heatingAge: z.string().nullable().optional(),
   hotWaterIncluded: z.string().nullable().optional(),
+  warmwasserSpeicherLiter: z.string().nullable().optional(),
+  solarthermieVorhanden: z.string().nullable().optional(),
   timeframe: z.string().nullable().optional(),
   availability: z.string().nullable().optional(),
   annualKwhGas: z.string().nullable().optional(),

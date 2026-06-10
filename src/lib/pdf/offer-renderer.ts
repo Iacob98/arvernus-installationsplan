@@ -230,56 +230,58 @@ async function renderPositionsPages(
     const list = grouped.get(type);
     if (!list || list.length === 0) continue;
 
-    const positionsHtml = list
-      .map((p) => {
-        const techList =
-          Array.isArray(p.technicalData) && p.technicalData.length > 0
-            ? `<ul class="offer-tech-list">${(p.technicalData as { key: string; value: string }[])
-                .map(
-                  (t) =>
-                    `<li><strong>${escHtml(String(t.key))}:</strong> ${escHtml(String(t.value))}</li>`,
-                )
-                .join("")}</ul>`
-            : "";
-
-        const photoSrc = photoDataUris[p.id];
-        const photoHtml = photoSrc
-          ? `<img src="${photoSrc}" class="offer-position-photo" alt="" />`
+    // Eine Position pro Seite mit wiederholtem Sektionskopf — vermeidet das
+    // Problem, dass eine große Position (page-break-inside: avoid) hinter
+    // dem Kopf vom selben Block auf die nächste Seite umbricht und den Kopf
+    // allein zurücklässt.
+    for (const p of list) {
+      const techList =
+        Array.isArray(p.technicalData) && p.technicalData.length > 0
+          ? `<ul class="offer-tech-list">${(p.technicalData as { key: string; value: string }[])
+              .map(
+                (t) =>
+                  `<li><strong>${escHtml(String(t.key))}:</strong> ${escHtml(String(t.value))}</li>`,
+              )
+              .join("")}</ul>`
           : "";
 
-        const desc = p.description
-          ? `<p>${escHtml(p.description).replace(/\n/g, "<br>")}</p>`
-          : "";
+      const photoSrc = photoDataUris[p.id];
+      const photoHtml = photoSrc
+        ? `<img src="${photoSrc}" class="offer-position-photo" alt="" />`
+        : "";
 
-        const num = positionIndex++;
+      const desc = p.description
+        ? `<p>${escHtml(p.description).replace(/\n/g, "<br>")}</p>`
+        : "";
 
-        return `<div class="offer-position">
-          <div class="offer-position-head">
-            <div style="display:flex;align-items:center;flex:1;">
-              <span class="offer-position-number">${num}</span>
-              <span class="offer-position-title">${escHtml(p.name)}</span>
-            </div>
-            <div class="offer-position-qty">${p.manufacturer ? escHtml(p.manufacturer) + " | " : ""}${p.quantity} Stück</div>
+      const num = positionIndex++;
+
+      const positionHtml = `<div class="offer-position">
+        <div class="offer-position-head">
+          <div style="display:flex;align-items:center;flex:1;">
+            <span class="offer-position-number">${num}</span>
+            <span class="offer-position-title">${escHtml(p.name)}</span>
           </div>
-          <div class="offer-position-body">
-            <div class="offer-position-text">
-              ${desc}
-              ${techList}
-            </div>
-            ${photoHtml}
+          <div class="offer-position-qty">${p.manufacturer ? escHtml(p.manufacturer) + " | " : ""}${p.quantity} Stück</div>
+        </div>
+        <div class="offer-position-body">
+          <div class="offer-position-text">
+            ${desc}
+            ${techList}
           </div>
-        </div>`;
-      })
-      .join("");
+          ${photoHtml}
+        </div>
+      </div>`;
 
-    groupBlocks.push(`<div class="offer-page">
-      ${headerBar(logoSrc, company.name, "", "")}
-      <div class="offer-page-date">${escHtml(dateLabel)}</div>
-      <div class="offer-page-heading">${escHtml(TYPE_LABELS[type])}</div>
-      <div class="offer-page-sub">Hier sehen Sie die Details der ${escHtml(TYPE_LABELS[type])}-Komponenten.</div>
-      <div class="offer-section-label">Verbaute Komponenten</div>
-      ${positionsHtml}
-    </div>`);
+      groupBlocks.push(`<div class="offer-page">
+        ${headerBar(logoSrc, company.name, "", "")}
+        <div class="offer-page-date">${escHtml(dateLabel)}</div>
+        <div class="offer-page-heading">${escHtml(TYPE_LABELS[type])}</div>
+        <div class="offer-page-sub">Hier sehen Sie die Details der ${escHtml(TYPE_LABELS[type])}-Komponenten.</div>
+        <div class="offer-section-label">Verbaute Komponenten</div>
+        ${positionHtml}
+      </div>`);
+    }
   }
 
   return groupBlocks.join("\n");

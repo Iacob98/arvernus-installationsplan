@@ -12,6 +12,8 @@ export const offerInquirySchema = z.object({
   householdSize: z.string().nullable().optional(),
   heizsystem: z.string().nullable().optional(),
   hotWaterIncluded: z.string().nullable().optional(),
+  warmwasserSpeicherLiter: z.string().nullable().optional(),
+  solarthermieVorhanden: z.string().nullable().optional(),
   currentHeating: z.string().nullable().optional(),
   heatingAge: z.string().nullable().optional(),
   incomeRange: z.string().nullable().optional(),

@@ -281,6 +281,45 @@ export async function markClientImKontakt(id: string) {
   return client;
 }
 
+export async function markClientVerkauft(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Nicht authentifiziert");
+
+  const sentOfferCount = await db.offer.count({
+    where: { clientId: id, status: "SENT" },
+  });
+  if (sentOfferCount === 0) {
+    throw new Error("Kein gesendetes Angebot vorhanden");
+  }
+
+  const client = await db.client.update({
+    where: { id },
+    data: { status: "VERKAUFT" },
+  });
+
+  await cancelClientOfferReminders(id);
+
+  revalidatePath("/clients");
+  revalidatePath(`/clients/${id}`);
+  return client;
+}
+
+export async function markClientNichtVerkauft(id: string) {
+  const session = await auth();
+  if (!session?.user) throw new Error("Nicht authentifiziert");
+
+  const client = await db.client.update({
+    where: { id },
+    data: { status: "NICHT_VERKAUFT" },
+  });
+
+  await cancelClientOfferReminders(id);
+
+  revalidatePath("/clients");
+  revalidatePath(`/clients/${id}`);
+  return client;
+}
+
 export async function deleteClient(id: string) {
   const session = await auth();
   if (!session?.user) throw new Error("Nicht authentifiziert");
