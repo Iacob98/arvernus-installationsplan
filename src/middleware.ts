@@ -13,20 +13,41 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
+  const role = req.auth?.user?.role;
+  const isInstaller = role === "INSTALLER";
+
   if (isLoggedIn && isLoginPage) {
-    return NextResponse.redirect(new URL("/clients", req.url));
+    const landing = isInstaller ? "/projects" : "/clients";
+    return NextResponse.redirect(new URL(landing, req.url));
   }
 
-  // /projects is temporarily hidden — will move to a separate site / user group.
-  // The route files stay in the repo; here we just block access in the dashboard.
-  if (isLoggedIn && req.nextUrl.pathname.startsWith("/projects")) {
+  // INSTALLER scope: only /projects/* and /profile (+ public /api/auth handled above)
+  if (isLoggedIn && isInstaller) {
+    const p = req.nextUrl.pathname;
+    const allowed =
+      p.startsWith("/projects") ||
+      p.startsWith("/profile") ||
+      p.startsWith("/api/inbox") ||
+      p === "/";
+    if (!allowed) {
+      return NextResponse.redirect(new URL("/projects", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // /projects is hidden from ADMIN/MANAGER/TECHNICIAN/VIEWER — only INSTALLERs use it.
+  if (
+    isLoggedIn &&
+    req.nextUrl.pathname.startsWith("/projects") &&
+    !isInstaller
+  ) {
     return NextResponse.redirect(new URL("/clients", req.url));
   }
 
   // Admin-only routes
   const adminOnlyPaths = ["/users", "/campaigns", "/settings"];
   const isAdminRoute = adminOnlyPaths.some((p) => req.nextUrl.pathname.startsWith(p));
-  if (isLoggedIn && isAdminRoute && req.auth?.user?.role !== "ADMIN") {
+  if (isLoggedIn && isAdminRoute && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/clients", req.url));
   }
 

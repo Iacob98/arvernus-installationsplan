@@ -12,6 +12,7 @@ enum Role {
   MANAGER
   TECHNICIAN
   VIEWER
+  INSTALLER
 }
 
 enum ProjectStatus {

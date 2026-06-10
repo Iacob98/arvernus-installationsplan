@@ -36,6 +36,14 @@ type NavItem = {
 };
 
 function getNavItems(role?: string): NavItem[] {
+  // INSTALLER sees only the Installationsplan workspace + own profile.
+  if (role === "INSTALLER") {
+    return [
+      { href: "/projects", label: "Projekte", icon: FolderOpen },
+      { href: "/profile", label: "Mein Profil", icon: UserIcon },
+    ];
+  }
+
   if (role !== "ADMIN") {
     return [
       { href: "/kpi", label: "Meine KPI", icon: BarChart3 },

@@ -32,6 +32,7 @@ const ROLE_LABELS: Record<Role, string> = {
   MANAGER: "Manager",
   TECHNICIAN: "Techniker",
   VIEWER: "Betrachter",
+  INSTALLER: "Monteur",
 };
 
 const ROLE_COLORS: Record<Role, string> = {
@@ -39,6 +40,7 @@ const ROLE_COLORS: Record<Role, string> = {
   MANAGER: "bg-blue-100 text-blue-800",
   TECHNICIAN: "bg-green-100 text-green-800",
   VIEWER: "bg-gray-100 text-gray-800",
+  INSTALLER: "bg-amber-100 text-amber-800",
 };
 
 interface UsersPageContentProps {

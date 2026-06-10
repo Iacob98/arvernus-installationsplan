@@ -62,6 +62,7 @@ const ROLE_LABELS: Record<Role, string> = {
   MANAGER: "Manager",
   TECHNICIAN: "Techniker",
   VIEWER: "Viewer",
+  INSTALLER: "Monteur",
 };
 
 export function KpiPageContent({ data }: { data: KpiResult }) {

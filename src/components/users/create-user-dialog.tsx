@@ -140,6 +140,7 @@ export function CreateUserDialog({ onCreated }: CreateUserDialogProps) {
                 <SelectContent>
                   <SelectItem value="ADMIN">Admin</SelectItem>
                   <SelectItem value="MANAGER">Manager</SelectItem>
+                  <SelectItem value="INSTALLER">Monteur</SelectItem>
                   <SelectItem value="TECHNICIAN">Techniker</SelectItem>
                   <SelectItem value="VIEWER">Betrachter</SelectItem>
                 </SelectContent>
