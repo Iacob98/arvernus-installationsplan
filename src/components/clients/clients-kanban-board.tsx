@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { formatDistanceToNowStrict, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
@@ -105,8 +105,6 @@ export function ClientsKanbanBoard({
   assignedFilter,
   setAssignedFilter,
 }: Props) {
-  const [lostExpanded, setLostExpanded] = useState(false);
-
   const grouped = useMemo(() => {
     const g: Record<ClientStatus, KanbanClient[]> = {
       NEU: [],
@@ -181,15 +179,14 @@ export function ClientsKanbanBoard({
         <div className="flex gap-3 h-full px-3 pt-3 pb-2 min-w-max">
           {STATUS_ORDER.map((status) => {
             const items = grouped[status];
-            const isCollapsedLost = status === "NICHT_VERKAUFT" && !lostExpanded;
-            if (isCollapsedLost) {
+            if (status === "NICHT_VERKAUFT") {
               return (
-                <button
+                <Link
                   key={status}
-                  type="button"
-                  onClick={() => setLostExpanded(true)}
+                  href="/clients/verloren"
                   className="shrink-0 w-10 h-full bg-card border border-border/70 rounded-md flex flex-col items-center py-3 gap-3 hover:border-foreground/30 transition-colors group"
                   style={{ borderTop: `3px solid ${STATUS_COLORS[status]}` }}
+                  aria-label="Verlorene Kunden öffnen"
                 >
                   <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                   <div
@@ -201,7 +198,7 @@ export function ClientsKanbanBoard({
                   <div className="mt-auto font-mono text-xs tabular-nums text-muted-foreground/70">
                     {items.length}
                   </div>
-                </button>
+                </Link>
               );
             }
             return (
@@ -210,9 +207,6 @@ export function ClientsKanbanBoard({
                 status={status}
                 items={items}
                 isAdmin={isAdmin}
-                onCollapse={
-                  status === "NICHT_VERKAUFT" ? () => setLostExpanded(false) : undefined
-                }
               />
             );
           })}

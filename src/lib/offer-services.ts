@@ -70,6 +70,14 @@ export const SERVICE_PRESETS: ServicePreset[] = [
     defaultSelected: true,
   },
   {
+    id: "materialkosten",
+    name: "Materialkosten",
+    description: "Material für Installation und Montage",
+    defaultPrice: 2203,
+    defaultQuantity: 1,
+    defaultSelected: true,
+  },
+  {
     id: "kernbohrung",
     name: "Kernbohrung 150 mm als Hauseinführung",
     description:

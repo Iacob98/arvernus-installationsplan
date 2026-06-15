@@ -154,6 +154,7 @@ model Client {
   city            String
   notes           String?
   status          ClientStatus     @default(NEU)
+  verlustgrund    String?
   source          String?
   unsubscribed    Boolean          @default(false)
 

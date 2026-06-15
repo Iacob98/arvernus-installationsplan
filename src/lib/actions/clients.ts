@@ -350,20 +350,82 @@ export async function markClientVerkauft(id: string) {
   return client;
 }
 
-export async function markClientNichtVerkauft(id: string) {
+export async function markClientNichtVerkauft(
+  id: string,
+  verlustgrund: string | null = null,
+) {
   const session = await auth();
   if (!session?.user) throw new Error("Nicht authentifiziert");
 
+  const trimmed = verlustgrund?.trim();
+  const reason = trimmed && trimmed.length > 0 ? trimmed.slice(0, 500) : null;
+
   const client = await db.client.update({
     where: { id },
-    data: { status: "NICHT_VERKAUFT" },
+    data: { status: "NICHT_VERKAUFT", verlustgrund: reason },
   });
 
   await cancelClientOfferReminders(id);
 
   revalidatePath("/clients");
+  revalidatePath("/clients/verloren");
   revalidatePath(`/clients/${id}`);
   return client;
+}
+
+export type VerloreneClient = {
+  id: string;
+  salutation: string | null;
+  firstName: string;
+  lastName: string;
+  customerNumber: string;
+  city: string;
+  verlustgrund: string | null;
+  updatedAt: Date;
+  assignedTo: { id: string; name: string } | null;
+};
+
+export async function getVerloreneClients(
+  search?: string,
+): Promise<{ mitGrund: VerloreneClient[]; ohneGrund: VerloreneClient[] }> {
+  const session = await auth();
+  if (!session?.user) throw new Error("Nicht authentifiziert");
+
+  const where: Prisma.ClientWhereInput = { status: "NICHT_VERKAUFT" };
+  if (session.user.role !== "ADMIN") {
+    where.assignedToId = session.user.id;
+  }
+  if (search) {
+    where.OR = [
+      { firstName: { contains: search, mode: "insensitive" } },
+      { lastName: { contains: search, mode: "insensitive" } },
+      { customerNumber: { contains: search, mode: "insensitive" } },
+      { city: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  const clients = await db.client.findMany({
+    where,
+    orderBy: { updatedAt: "desc" },
+    select: {
+      id: true,
+      salutation: true,
+      firstName: true,
+      lastName: true,
+      customerNumber: true,
+      city: true,
+      verlustgrund: true,
+      updatedAt: true,
+      assignedTo: { select: { id: true, name: true } },
+    },
+  });
+
+  const mitGrund: VerloreneClient[] = [];
+  const ohneGrund: VerloreneClient[] = [];
+  for (const c of clients) {
+    (c.verlustgrund ? mitGrund : ohneGrund).push(c);
+  }
+  return { mitGrund, ohneGrund };
 }
 
 export async function deleteClient(id: string) {

@@ -35,6 +35,7 @@ import { OfferSection } from "@/components/offers/offer-section";
 import { ClientNotesSection } from "./client-notes-section";
 import { ClientAttachmentsSection } from "./client-attachments-section";
 import { EmailLogSection } from "./email-log-section";
+import { VerlorenReasonDialog } from "./verloren-reason-dialog";
 import {
   createClientNote,
   deleteClient,
@@ -100,6 +101,7 @@ export function ClientDetailWorkspace({
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSending, setNoteSending] = useState(false);
   const [tab, setTab] = useState("anfrage");
+  const [showVerlorenDialog, setShowVerlorenDialog] = useState(false);
 
   const clientName = `${client.firstName} ${client.lastName}`.trim();
   const statusColor = STATUS_COLORS[client.status];
@@ -291,64 +293,70 @@ export function ClientDetailWorkspace({
                   In Kontakt setzen
                 </Button>
               )}
-            {(client.status === "ANGEBOT_VERSENDET" ||
-              client.status === "IM_KONTAKT") &&
-              client.offers.some((o) => o.status === "SENT") && (
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="h-10 lg:h-11 font-medium bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900"
-                    onClick={() => {
-                      startTransition(async () => {
-                        try {
-                          await markClientVerkauft(client.id);
-                          toast.success("Kunde als verkauft markiert");
-                          router.refresh();
-                        } catch (e) {
-                          toast.error(
-                            e instanceof Error
-                              ? e.message
-                              : "Fehler beim Statuswechsel",
-                          );
-                        }
-                      });
-                    }}
-                  >
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Verkauft
-                  </Button>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="h-10 lg:h-11 font-medium bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-950/30 dark:hover:bg-zinc-950/50 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800"
-                    onClick={() => {
-                      if (
-                        !confirm(
-                          "Kunde wirklich als verloren markieren? Erinnerungen werden gestoppt.",
-                        )
-                      )
-                        return;
-                      startTransition(async () => {
-                        try {
-                          await markClientNichtVerkauft(client.id);
-                          toast.success("Kunde als verloren markiert");
-                          router.refresh();
-                        } catch (e) {
-                          toast.error(
-                            e instanceof Error
-                              ? e.message
-                              : "Fehler beim Statuswechsel",
-                          );
-                        }
-                      });
-                    }}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Verloren
-                  </Button>
+            {(() => {
+              const hasSentOffer = client.offers.some((o) => o.status === "SENT");
+              const canVerkauft =
+                (client.status === "ANGEBOT_VERSENDET" ||
+                  client.status === "IM_KONTAKT") &&
+                hasSentOffer;
+              const canVerloren =
+                client.status === "ANGERUFEN" ||
+                client.status === "ANGEBOT_VERSENDET" ||
+                client.status === "IM_KONTAKT";
+
+              if (!canVerkauft && !canVerloren) return null;
+
+              const verkauftBtn = canVerkauft ? (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-10 lg:h-11 font-medium bg-green-50 hover:bg-green-100 dark:bg-green-950/30 dark:hover:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900"
+                  onClick={() => {
+                    startTransition(async () => {
+                      try {
+                        await markClientVerkauft(client.id);
+                        toast.success("Kunde als verkauft markiert");
+                        router.refresh();
+                      } catch (e) {
+                        toast.error(
+                          e instanceof Error
+                            ? e.message
+                            : "Fehler beim Statuswechsel",
+                        );
+                      }
+                    });
+                  }}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Verkauft
+                </Button>
+              ) : null;
+
+              const verlorenBtn = canVerloren ? (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-10 lg:h-11 font-medium bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-950/30 dark:hover:bg-zinc-950/50 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800"
+                  onClick={() => setShowVerlorenDialog(true)}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Verloren
+                </Button>
+              ) : null;
+
+              return (
+                <div
+                  className={
+                    canVerkauft && canVerloren
+                      ? "grid grid-cols-2 gap-2"
+                      : "[&>button]:w-full"
+                  }
+                >
+                  {verkauftBtn}
+                  {verlorenBtn}
                 </div>
-              )}
+              );
+            })()}
           </div>
 
           <div className="space-y-2">
@@ -623,6 +631,23 @@ export function ClientDetailWorkspace({
         clientName={clientName}
         initialSubject={composeInitial.subject}
         initialBody={composeInitial.body}
+      />
+
+      <VerlorenReasonDialog
+        open={showVerlorenDialog}
+        onOpenChange={setShowVerlorenDialog}
+        onConfirm={async (verlustgrund) => {
+          try {
+            await markClientNichtVerkauft(client.id, verlustgrund);
+            toast.success("Kunde als verloren markiert");
+            router.refresh();
+          } catch (e) {
+            toast.error(
+              e instanceof Error ? e.message : "Fehler beim Statuswechsel",
+            );
+            throw e;
+          }
+        }}
       />
     </div>
   );

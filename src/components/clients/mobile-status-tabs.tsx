@@ -1,11 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { ClientStatus } from "@prisma/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Column,
   STATUS_LABELS,
-  STATUS_ORDER,
   type KanbanClient,
 } from "./clients-kanban-board";
 
@@ -23,9 +23,18 @@ const SHORT_LABEL: Record<ClientStatus, string> = {
   NICHT_VERKAUFT: "Verloren",
 };
 
+const ACTIVE_STATUSES: ClientStatus[] = [
+  "NEU",
+  "ANGERUFEN",
+  "ANGEBOT_VERSENDET",
+  "IM_KONTAKT",
+  "VERKAUFT",
+];
+
 export function MobileStatusTabs({ grouped, isAdmin }: Props) {
   const initial: ClientStatus =
-    STATUS_ORDER.find((s) => grouped[s].length > 0) ?? "NEU";
+    ACTIVE_STATUSES.find((s) => grouped[s].length > 0) ?? "NEU";
+  const verlorenCount = grouped["NICHT_VERKAUFT"].length;
 
   return (
     <Tabs defaultValue={initial} className="flex flex-col h-full">
@@ -34,7 +43,7 @@ export function MobileStatusTabs({ grouped, isAdmin }: Props) {
           className="flex-nowrap justify-start bg-transparent h-auto p-1 gap-0.5 w-max"
           aria-label="Status"
         >
-          {STATUS_ORDER.map((status) => {
+          {ACTIVE_STATUSES.map((status) => {
             const n = grouped[status].length;
             return (
               <TabsTrigger
@@ -49,11 +58,20 @@ export function MobileStatusTabs({ grouped, isAdmin }: Props) {
               </TabsTrigger>
             );
           })}
+          <Link
+            href="/clients/verloren"
+            className="inline-flex items-center text-xs px-3 py-1.5 whitespace-nowrap rounded-md text-muted-foreground hover:bg-background/60 hover:text-foreground transition-colors"
+          >
+            {SHORT_LABEL["NICHT_VERKAUFT"]}
+            <span className="ml-1 font-mono tabular-nums text-[10px] text-muted-foreground">
+              {verlorenCount}
+            </span>
+          </Link>
         </TabsList>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-3 pt-2 pb-3">
-        {STATUS_ORDER.map((status) => (
+        {ACTIVE_STATUSES.map((status) => (
           <TabsContent
             key={status}
             value={status}
