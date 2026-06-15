@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   XCircle,
   ArrowDownLeft,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -149,16 +150,28 @@ export function ClientDetailWorkspace({
           style={{ background: "var(--brand-muted)" }}
         >
           <div>
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 -ml-2 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <Link href="/clients">
-                <ArrowLeft className="h-3 w-3 mr-1" /> Zurück
-              </Link>
-            </Button>
+            <div className="flex items-center justify-between -ml-2 -mr-1">
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Link href="/clients">
+                  <ArrowLeft className="h-3 w-3 mr-1" /> Zurück
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <Link href={`/clients/${client.id}/edit`}>
+                  <Pencil className="h-3 w-3 mr-1" /> Bearbeiten
+                </Link>
+              </Button>
+            </div>
             <h1 className="mt-2 text-xl font-bold leading-tight tracking-tight">
               {client.salutation ? `${client.salutation} ` : ""}
               {clientName}
