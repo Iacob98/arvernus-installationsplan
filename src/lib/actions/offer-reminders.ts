@@ -38,13 +38,25 @@ export async function scheduleOfferReminders(offerId: string) {
     if (delayMs <= 0) continue;
 
     const jobId = reminderJobId(offerId, step.step);
-    const reminder = await db.offerReminder.create({
-      data: {
+    // Upsert statt create: bei erneutem Versand existiert die Zeile
+    // (offerId, step) bereits (z. B. CANCELLED/SENT/SKIPPED). Wir setzen
+    // sie zurück statt am Unique-Index (offerId, step) zu scheitern.
+    const reminder = await db.offerReminder.upsert({
+      where: { offerId_step: { offerId, step: step.step } },
+      create: {
         offerId,
         step: step.step,
         scheduledAt,
         status: "SCHEDULED",
         jobId,
+      },
+      update: {
+        scheduledAt,
+        status: "SCHEDULED",
+        jobId,
+        emailLogId: null,
+        sentAt: null,
+        skippedReason: null,
       },
     });
     await scheduleOfferReminderJob(reminder.id, jobId, delayMs);
