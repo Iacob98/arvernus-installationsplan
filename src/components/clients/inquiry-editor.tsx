@@ -25,6 +25,7 @@ const INQUIRY_FIELDS: { key: keyof ClientDetail; label: string }[] = [
   { key: "ownership", label: "Eigentumsverhältnis" },
   { key: "buildingType", label: "Gebäudetyp" },
   { key: "constructionYear", label: "Baujahr" },
+  { key: "saniert", label: "Saniert?" },
   { key: "householdSize", label: "Personenanzahl" },
   { key: "currentFuel", label: "Genutzter Brennstoff" },
   { key: "timeframe", label: "Zeitrahmen" },
