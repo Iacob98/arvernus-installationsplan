@@ -96,7 +96,11 @@ export function calcHeizlast(input: HeizlastInput): HeizlastEstimate {
 
   const heizlastByArea =
     wohn > 0 && spez ? (wohn * spez * sanierFactor) / 1000 : null;
-  const heizlastByConsumption = verbrauch > 0 ? (verbrauch / VBH) * 0.9 : null;
+  // Der Sanierungs-Faktor wirkt auf BEIDE Methoden, damit die WP-Empfehlung
+  // auch dann auf den Sanierungsstand reagiert, wenn ein Jahresverbrauch
+  // vorliegt (der sonst Vorrang hätte und den Faktor "verschluckt").
+  const heizlastByConsumption =
+    verbrauch > 0 ? (verbrauch / VBH) * 0.9 * sanierFactor : null;
 
   // Wenn beide Methoden vorliegen, hat der Verbrauchswert Vorrang — er
   // spiegelt die tatsächliche Wärmeabnahme wider, während die m²-Methode

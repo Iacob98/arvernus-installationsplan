@@ -58,13 +58,26 @@ Der gewählte Wert multipliziert die spezifische Heizlast (W/m²) in der
 
 ## Wichtiges Berechnungsdetail
 
-Der Multiplikator wirkt **ausschließlich auf `heizlastByArea`** (Flächen-Methode).
+> **Revidiert 2026-06-16 (nach Nutzer-Feedback "Kalkulator reagiert nicht"):**
+> Der Multiplikator wirkt auf **BEIDE Methoden** — `heizlastByArea` UND
+> `heizlastByConsumption`.
 
-`heizlastByConsumption` (Jahresverbrauch / VBH) bleibt unverändert — der reale
-Verbrauch spiegelt den tatsächlichen Dämmstand bereits wider. Das passt zur
-bestehenden Logik, bei der der Verbrauchswert Vorrang hat, wenn beide Methoden
-vorliegen. Der Saniert-Faktor wirkt sich also primär aus, wenn nur die
-Flächen-Methode Daten hat.
+Ursprünglich war geplant, den Faktor nur auf die Flächen-Methode anzuwenden.
+In der Praxis ist im Angebots-Wizard fast immer ein Jahresverbrauch vorbefüllt
+(aus den Kundendaten), und der Verbrauchswert hat in der Empfehlung Vorrang.
+Dadurch "verschluckte" die Verbrauchs-Methode den Saniert-Faktor und die
+WP-Empfehlung änderte sich beim Umschalten von Saniert NICHT — für den Nutzer
+sah es aus, als würde der Kalkulator nicht funktionieren.
+
+Deshalb skaliert der Saniert-Faktor jetzt beide Methoden, sodass die
+WP-Empfehlung (`heizlastKw`, `empfohleneWpKw`) immer auf den Sanierungsstand
+reagiert. Beispiel (150 m², `1978–1994`, Jahresverbrauch 21000):
+
+| saniert | heizlastKw | Empfohlene WP |
+|---------|------------|---------------|
+| Nein    | 9,0 kW     | 10 kW         |
+| Ja, 50% | 6,3 kW     | 7 kW          |
+| Ja      | 4,5 kW     | 5 kW          |
 
 ## Default / Abwärtskompatibilität
 
