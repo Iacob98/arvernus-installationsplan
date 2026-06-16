@@ -161,6 +161,7 @@ model Client {
   ownership        String?
   buildingType     String?
   constructionYear String?
+  saniert          String?
   householdSize    String?
   currentHeating   String?
   currentFuel      String?
