@@ -51,6 +51,7 @@ import {
   KFW_BONI,
   KFW_MAX_PERCENT,
   calcKfw,
+  maxFoerderfaehigeKosten,
   type KfwFoerderung,
 } from "@/lib/kfw-foerderung";
 import {
@@ -415,6 +416,7 @@ function OfferWizardContent({
               remove={discounts.remove}
               register={register}
               setValue={setValue}
+              control={control}
               totals={totals}
             />
           )}
@@ -1386,22 +1388,39 @@ interface DiscountsStepProps {
   remove: ReturnType<typeof useFieldArray<CreateOfferData, "discounts">>["remove"];
   register: ReturnType<typeof useForm<CreateOfferData>>["register"];
   setValue: ReturnType<typeof useForm<CreateOfferData>>["setValue"];
+  control: ReturnType<typeof useForm<CreateOfferData>>["control"];
   totals: ReturnType<typeof calcTotals>;
 }
 
 function KfwCalculator({
   setValue,
+  control,
 }: {
   setValue: ReturnType<typeof useForm<CreateOfferData>>["setValue"];
+  control: ReturnType<typeof useForm<CreateOfferData>>["control"];
 }) {
   const [kfw, setKfw] = useState<KfwFoerderung>(DEFAULT_KFW_FOERDERUNG);
   const result = calcKfw(kfw);
+
+  const wohneinheiten = useWatch({ control, name: "inquiry.wohneinheiten" }) as
+    | string
+    | null
+    | undefined;
+  const cap = maxFoerderfaehigeKosten(Number(wohneinheiten) || 1);
 
   function update<K extends keyof KfwFoerderung>(key: K, value: KfwFoerderung[K]) {
     const next = { ...kfw, [key]: value };
     setKfw(next);
     setValue("kfwFoerderung", next, { shouldDirty: true });
   }
+
+  // Auto-fill the förderfähige Kosten cap from the number of Wohneinheiten.
+  // Keyed on `cap` so it only fires when the unit count changes — manual edits
+  // to the field (which don't change `cap`) are preserved.
+  useEffect(() => {
+    update("foerderfaehigeKosten", cap);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cap]);
 
   return (
     <Card>
@@ -1472,8 +1491,8 @@ function KfwCalculator({
               }
             />
             <p className="text-xs text-muted-foreground">
-              KfW deckelt die förderfähigen Kosten typisch bei 30.000 € pro
-              Wohneinheit.
+              Automatisch aus der Anzahl Wohneinheiten: 30.000 € (1. WE)
+              + 15.000 € je weitere (2.–6.) + 8.000 € ab der 7. WE. Editierbar.
             </p>
           </div>
           <div className="rounded-md bg-primary/5 p-3 text-center">
@@ -1500,7 +1519,7 @@ const STANDARD_RABATTE = [
   { label: "Neukundenrabatt", value: 1.5 },
 ] as const;
 
-function DiscountsStep({ fields, append, remove, register, setValue, totals }: DiscountsStepProps) {
+function DiscountsStep({ fields, append, remove, register, setValue, control, totals }: DiscountsStepProps) {
   const currentLabels = new Set(fields.map((f) => f.label));
 
   function addPreset(label: string, value: number) {
@@ -1519,7 +1538,7 @@ function DiscountsStep({ fields, append, remove, register, setValue, totals }: D
 
   return (
     <div className="space-y-4">
-      <KfwCalculator setValue={setValue} />
+      <KfwCalculator setValue={setValue} control={control} />
 
       <Card className="border-primary/30 bg-primary/[0.02]">
         <CardHeader>
