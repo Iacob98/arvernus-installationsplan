@@ -2,10 +2,11 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { formatDistanceToNowStrict, startOfDay } from "date-fns";
+import { format, formatDistanceToNowStrict, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { ClientStatus } from "@prisma/client";
 import { MobileStatusTabs } from "./mobile-status-tabs";
+import { compareByLastCall } from "@/lib/client-sort";
 import {
   Flame,
   Search,
@@ -115,6 +116,7 @@ export function ClientsKanbanBoard({
       NICHT_VERKAUFT: [],
     };
     for (const c of clients) g[c.status]?.push(c);
+    for (const status of STATUS_ORDER) g[status].sort(compareByLastCall);
     return g;
   }, [clients]);
 
@@ -375,6 +377,14 @@ function ClientCard({
           <ActivityCount icon={Mail} count={client.emailsCount} title="E-Mails" />
           <span className="ml-auto text-muted-foreground/60">
             {formatRel(client.updatedAt)}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-[10px] text-muted-foreground/80">
+          <Phone className="h-2.5 w-2.5 shrink-0" />
+          <span className="truncate">
+            {client.lastCall
+              ? `Letzter Anruf: ${format(client.lastCall, "dd.MM.yyyy HH:mm")}`
+              : "Noch nie angerufen"}
           </span>
         </div>
 
