@@ -85,3 +85,15 @@ export function parseKfwFoerderung(value: unknown): KfwFoerderung | null {
       DEFAULT_KFW_FOERDERUNG.foerderfaehigeKosten,
   };
 }
+
+/**
+ * Maximal förderfähige Kosten nach BEG/KfW-458 in Abhängigkeit von der Anzahl
+ * Wohneinheiten: 30.000 € für die 1. WE, je 15.000 € für die 2.–6. WE und je
+ * 8.000 € ab der 7. WE. Ungültige/leere Angaben werden wie 1 WE behandelt.
+ */
+export function maxFoerderfaehigeKosten(wohneinheiten: number): number {
+  const we = Math.max(1, Math.floor(Number(wohneinheiten) || 1));
+  const tier2to6 = Math.min(we - 1, 5);
+  const tier7plus = Math.max(we - 6, 0);
+  return 30000 + tier2to6 * 15000 + tier7plus * 8000;
+}
