@@ -55,8 +55,10 @@ import {
 } from "@/lib/kfw-foerderung";
 import {
   BAUJAHR_CHIPS,
+  SANIERT_CHIPS,
   calcHeizlast,
   type BaujahrChip,
+  type SaniertChip,
 } from "@/lib/heizlast";
 import {
   resolveTemplate,
@@ -110,6 +112,7 @@ interface ClientInquiry {
   annualKwhGas: string | null;
   wohneinheiten: string | null;
   constructionYear: string | null;
+  saniert: string | null;
   householdSize: string | null;
   heizsystem: string | null;
   hotWaterIncluded: string | null;
@@ -194,6 +197,7 @@ function OfferWizardContent({
         annualKwhGas: inquiry.annualKwhGas ?? "",
         wohneinheiten: inquiry.wohneinheiten ?? "",
         constructionYear: inquiry.constructionYear ?? "",
+        saniert: inquiry.saniert ?? "",
         householdSize: inquiry.householdSize ?? "",
         heizsystem: inquiry.heizsystem ?? "",
         hotWaterIncluded: inquiry.hotWaterIncluded ?? "",
@@ -568,6 +572,13 @@ const INQUIRY_FIELDS: {
     section: "Gebäude",
   },
   {
+    key: "saniert",
+    label: "Saniert?",
+    placeholder: "Auswahl…",
+    chips: [...SANIERT_CHIPS],
+    section: "Gebäude",
+  },
+  {
     key: "householdSize",
     label: "Personen im Haushalt",
     placeholder: "z. B. 4",
@@ -723,10 +734,15 @@ function HeizlastWidget({
   const baujahr = (BAUJAHR_CHIPS as readonly string[]).includes(baujahrRaw ?? "")
     ? (baujahrRaw as BaujahrChip)
     : null;
+  const saniertRaw = inquiry?.saniert?.trim();
+  const saniert = (SANIERT_CHIPS as readonly string[]).includes(saniertRaw ?? "")
+    ? (saniertRaw as SaniertChip)
+    : null;
 
   const result = calcHeizlast({
     wohnflaecheM2: wohn,
     baujahr,
+    saniert,
     jahresverbrauchKwh: verbrauch,
     personen,
   });
@@ -911,6 +927,8 @@ function PositionsStep({
     const inq = inquiry ?? {};
     const baujahr = (inq.constructionYear as BaujahrChip) || null;
     const valid = baujahr && BAUJAHR_CHIPS.includes(baujahr as BaujahrChip);
+    const saniert = (inq.saniert as SaniertChip) || null;
+    const saniertValid = saniert && SANIERT_CHIPS.includes(saniert as SaniertChip);
     const wohn = Number(inq.wohnflaecheM2) || 0;
     const verbrauch = Number(inq.annualKwhGas) || 0;
     const personen = Number(inq.householdSize) || 0;
@@ -918,6 +936,7 @@ function PositionsStep({
     const r = calcHeizlast({
       wohnflaecheM2: wohn,
       baujahr: valid ? (baujahr as BaujahrChip) : null,
+      saniert: saniertValid ? (saniert as SaniertChip) : null,
       jahresverbrauchKwh: verbrauch,
       personen,
     });

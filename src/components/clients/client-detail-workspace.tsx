@@ -613,6 +613,7 @@ export function ClientDetailWorkspace({
           annualKwhGas: client.annualKwhGas,
           wohneinheiten: client.wohneinheiten,
           constructionYear: client.constructionYear,
+          saniert: client.saniert,
           householdSize: client.householdSize,
           heizsystem: client.heizsystem,
           hotWaterIncluded: client.hotWaterIncluded,
