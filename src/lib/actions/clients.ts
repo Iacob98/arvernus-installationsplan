@@ -494,6 +494,7 @@ const inquiryFieldKeys = [
   "ownership",
   "buildingType",
   "constructionYear",
+  "saniert",
   "householdSize",
   "currentHeating",
   "currentFuel",
