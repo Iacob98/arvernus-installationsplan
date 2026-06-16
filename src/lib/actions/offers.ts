@@ -12,7 +12,7 @@ import {
 import { SERVICE_PRESETS, isCustomServiceId } from "@/lib/offer-services";
 import { renderOfferPdf, calculateTotals } from "@/lib/pdf/offer-renderer";
 import { uploadFile, deleteFile, getFileBuffer } from "@/lib/storage";
-import { sendMailWithRetry } from "@/lib/email/smtp";
+import { addOfferSendJob } from "@/lib/queue";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { render } from "@react-email/render";
@@ -369,54 +369,52 @@ export async function sendOffer(offerId: string, data: SendOfferData) {
     },
   });
 
-  try {
-    await sendMailWithRetry({
-      from: buildFromHeader(sender, fromAddress),
-      to: offer.client.email,
-      subject: validated.subject,
-      text: signedBody,
-      html,
-      attachments,
-    });
+  // Optimistisch als versendet markieren und den eigentlichen SMTP-Versand
+  // asynchron in die Queue geben. Der geteilte Mailserver braucht bei einer
+  // "kalten" Verbindung bis zu ~20 s — darauf darf die UI nicht warten. Der
+  // Worker rollt bei endgültigem Fehlschlag (status → DRAFT, Reminder weg)
+  // zurück und setzt das emailLog auf FAILED.
+  await db.offer.update({
+    where: { id: offerId },
+    data: {
+      status: "SENT",
+      sentAt: new Date(),
+      emailSubject: validated.subject,
+      emailBody: signedBody,
+    },
+  });
 
-    await db.emailLog.update({
-      where: { id: emailLog.id },
-      data: { status: "SENT" },
-    });
-
-    await db.offer.update({
-      where: { id: offerId },
-      data: {
-        status: "SENT",
-        sentAt: new Date(),
-        emailSubject: validated.subject,
-        emailBody: signedBody,
-      },
-    });
-
-    // Auto-advance Client pipeline: höchstens bis ANGEBOT_VERSENDET
-    const client = await db.client.findUnique({
+  // Auto-advance Client pipeline: höchstens bis ANGEBOT_VERSENDET
+  const client = await db.client.findUnique({
+    where: { id: offer.clientId },
+    select: { status: true },
+  });
+  if (client && (client.status === "NEU" || client.status === "ANGERUFEN")) {
+    await db.client.update({
       where: { id: offer.clientId },
-      select: { status: true },
+      data: { status: "ANGEBOT_VERSENDET" },
     });
-    if (
-      client &&
-      (client.status === "NEU" || client.status === "ANGERUFEN")
-    ) {
-      await db.client.update({
-        where: { id: offer.clientId },
-        data: { status: "ANGEBOT_VERSENDET" },
-      });
-    }
-
-    await scheduleOfferReminders(offerId);
-  } catch (e) {
-    await db.emailLog.update({
-      where: { id: emailLog.id },
-      data: { status: "FAILED" },
-    });
-    throw e;
   }
+
+  await scheduleOfferReminders(offerId);
+
+  await addOfferSendJob({
+    type: "offer-send",
+    emailLogId: emailLog.id,
+    offerId,
+    clientId: offer.clientId,
+    from: buildFromHeader(sender, fromAddress),
+    to: offer.client.email,
+    subject: validated.subject,
+    text: signedBody,
+    html,
+    attachments: attachments.map((a) => ({
+      filename: a.filename,
+      content: a.content.toString("base64"),
+      encoding: "base64" as const,
+      ...(a.cid ? { cid: a.cid } : {}),
+    })),
+  });
 
   revalidatePath(`/clients/${offer.clientId}`);
   revalidatePath(`/clients/${offer.clientId}/offers/${offerId}`);

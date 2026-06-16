@@ -6,12 +6,65 @@ import {
   EmailJobData,
   CampaignEmailJobData,
   OfferReminderJobData,
+  OfferSendJobData,
 } from "@/lib/queue";
 import { sendMailWithRetry } from "./smtp";
 import { getLogoBase64 } from "@/lib/pdf/logo";
 import { getFileBuffer } from "@/lib/storage";
 import { BrandedEmail } from "./template";
 import { processOfferReminderJob } from "./offer-reminder-worker";
+import { cancelOfferReminders } from "@/lib/actions/offer-reminders";
+
+/**
+ * Versendet ein Angebot asynchron. Die UI hat bereits optimistisch SENT
+ * gesetzt; hier wird nur tatsächlich gemailt. Erst nach endgültigem
+ * Fehlschlag (alle Versuche) wird zurückgerollt, damit ein einmaliger
+ * Mailserver-Aussetzer nicht sofort das Angebot auf FAILED kippt.
+ */
+async function processOfferSendJob(job: Job<OfferSendJobData>) {
+  const { emailLogId, offerId, from, to, subject, text, html, attachments } =
+    job.data;
+  try {
+    await sendMailWithRetry({
+      from,
+      to,
+      subject,
+      text,
+      html,
+      attachments: attachments.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        encoding: a.encoding,
+        ...(a.cid ? { cid: a.cid } : {}),
+      })),
+    });
+
+    await db.emailLog.update({
+      where: { id: emailLogId },
+      data: { status: "SENT" },
+    });
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(`Offer-send job ${job.id} failed:`, message);
+
+    const attempts = job.opts.attempts ?? 3;
+    if (job.attemptsMade >= attempts) {
+      // endgültig fehlgeschlagen → optimistisches SENT zurücknehmen
+      await db.emailLog
+        .update({ where: { id: emailLogId }, data: { status: "FAILED" } })
+        .catch(() => {});
+      await db.offer
+        .update({
+          where: { id: offerId },
+          data: { status: "DRAFT", sentAt: null },
+        })
+        .catch(() => {});
+      await cancelOfferReminders(offerId).catch(() => {});
+    }
+    throw error;
+  }
+}
 
 async function processCampaignEmailJob(
   job: Job<CampaignEmailJobData>
@@ -82,7 +135,8 @@ async function processCampaignEmailJob(
 type AnyEmailJobData =
   | EmailJobData
   | CampaignEmailJobData
-  | OfferReminderJobData;
+  | OfferReminderJobData
+  | OfferSendJobData;
 
 async function processEmailJob(job: Job<AnyEmailJobData>) {
   if ("type" in job.data && job.data.type === "campaign") {
@@ -90,6 +144,9 @@ async function processEmailJob(job: Job<AnyEmailJobData>) {
   }
   if ("type" in job.data && job.data.type === "offer-reminder") {
     return processOfferReminderJob(job as Job<OfferReminderJobData>);
+  }
+  if ("type" in job.data && job.data.type === "offer-send") {
+    return processOfferSendJob(job as Job<OfferSendJobData>);
   }
 
   const { emailLogId, to, subject, body, from } = job.data as EmailJobData;

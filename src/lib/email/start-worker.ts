@@ -1,7 +1,12 @@
 import "dotenv/config";
 import { startEmailWorker } from "./worker";
 import { startImapWorker } from "./imap-worker";
+import { startSmtpKeepWarm } from "./smtp";
 import { imapQueue } from "@/lib/queue";
+
+// SMTP-Verbindung warm halten, damit der Mailserver nicht bei jedem Versand
+// seine ~20 s Anti-Spam-Verzögerung für "kalte" Verbindungen verhängt.
+startSmtpKeepWarm();
 
 console.log("Starting email worker...");
 const emailWorker = startEmailWorker();

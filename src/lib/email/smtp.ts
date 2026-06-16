@@ -14,6 +14,14 @@ export const smtpTransporter =
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+    // Der geteilte Mailserver verhängt beim ERSTEN Verbindungsaufbau von
+    // einer IP eine ~20 s Anti-Spam-Verzögerung und vertraut der IP danach
+    // einige Minuten. Mit pool/keepAlive halten wir eine Verbindung warm und
+    // wiederverwenden sie, statt für jeden Versand neu (und kalt = langsam)
+    // aufzubauen.
+    pool: true,
+    maxConnections: 2,
+    maxMessages: 50,
     // Der Mailserver (Exim) bricht den DATA-Upload gelegentlich mit
     // "421 incoming data timeout" ab. Ohne Timeouts würde der Versand dann
     // unbegrenzt hängen — lieber schnell scheitern und neu versuchen.
@@ -24,6 +32,29 @@ export const smtpTransporter =
 
 if (process.env.NODE_ENV !== "production")
   globalForSmtp.smtpTransporter = smtpTransporter;
+
+/**
+ * Hält die gepoolte SMTP-Verbindung warm. Der Mailserver verhängt sonst beim
+ * ersten Connect nach Leerlauf seine ~20 s Anti-Spam-Verzögerung. Ein
+ * regelmäßiger verify() hält die Verbindung offen und die IP "vertraut".
+ */
+export async function warmUpSmtp(): Promise<void> {
+  try {
+    await smtpTransporter.verify();
+  } catch {
+    // ignorieren — nächster echter Versand versucht es erneut
+  }
+}
+
+let keepWarmTimer: ReturnType<typeof setInterval> | undefined;
+
+export function startSmtpKeepWarm(intervalMs = 90_000): void {
+  if (keepWarmTimer) return;
+  void warmUpSmtp();
+  keepWarmTimer = setInterval(() => void warmUpSmtp(), intervalMs);
+  // Timer darf den Prozess nicht am Beenden hindern.
+  keepWarmTimer.unref?.();
+}
 
 /** SMTP-Fehlercodes, bei denen ein erneuter Versuch sinnvoll ist. */
 const TRANSIENT_CODES = new Set([

@@ -60,6 +60,29 @@ export async function addEmailJob(data: EmailJobData) {
   });
 }
 
+// Offer-Versand (asynchron, damit die UI nicht auf den SMTP-Roundtrip wartet)
+export type OfferSendJobData = {
+  type: "offer-send";
+  emailLogId: string;
+  offerId: string;
+  clientId: string;
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  attachments: {
+    filename: string;
+    content: string; // base64
+    encoding: "base64";
+    cid?: string;
+  }[];
+};
+
+export async function addOfferSendJob(data: OfferSendJobData) {
+  return emailQueue.add("send-offer", data, { priority: 1 });
+}
+
 // Campaign email queue
 export type CampaignEmailJobData = {
   type: "campaign";
