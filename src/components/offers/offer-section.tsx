@@ -35,6 +35,7 @@ interface OfferRow {
   status: string;
   createdAt: Date;
   sentAt: Date | null;
+  sendFailedAt: Date | null;
   emailSubject: string | null;
   emailBody: string | null;
   createdBy: { name: string };
@@ -103,6 +104,7 @@ export function OfferSection({
                 o.status === "SENT" ||
                 o.status === "VIEWED" ||
                 o.status === "ACCEPTED";
+              const sendFailed = !!o.sendFailedAt;
               return (
                 <div
                   key={o.id}
@@ -134,7 +136,7 @@ export function OfferSection({
                     </div>
                   </Link>
                   <div className="flex items-center gap-2 shrink-0">
-                    {wasSent && (
+                    {(wasSent || sendFailed) && (
                       <Button
                         type="button"
                         size="sm"
@@ -144,16 +146,29 @@ export function OfferSection({
                         title={
                           !clientHasEmail
                             ? "Keine E-Mail-Adresse"
-                            : "Angebot erneut senden"
+                            : sendFailed
+                              ? "Versand erneut versuchen"
+                              : "Angebot erneut senden"
                         }
                       >
                         <Send className="h-3.5 w-3.5 mr-1" />
-                        <span className="hidden sm:inline">Erneut</span>
+                        <span className="hidden sm:inline">
+                          {sendFailed ? "Erneut versuchen" : "Erneut"}
+                        </span>
                       </Button>
                     )}
-                    <Badge variant={STATUS_VARIANTS[o.status] ?? "outline"}>
-                      {STATUS_LABELS[o.status] ?? o.status}
-                    </Badge>
+                    {sendFailed ? (
+                      <Badge
+                        variant="destructive"
+                        title="Der Hintergrund-Versand ist fehlgeschlagen — bitte erneut senden"
+                      >
+                        Versand fehlgeschlagen
+                      </Badge>
+                    ) : (
+                      <Badge variant={STATUS_VARIANTS[o.status] ?? "outline"}>
+                        {STATUS_LABELS[o.status] ?? o.status}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               );

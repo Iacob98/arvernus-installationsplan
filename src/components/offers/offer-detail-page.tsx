@@ -150,6 +150,14 @@ export function OfferDetailPage({ offer }: { offer: OfferDetailForClient }) {
               <Badge variant={STATUS_VARIANTS[offer.status]}>
                 {STATUS_LABELS[offer.status]}
               </Badge>
+              {offer.sendFailedAt && (
+                <Badge
+                  variant="destructive"
+                  title={offer.sendError ?? "Versand fehlgeschlagen"}
+                >
+                  Versand fehlgeschlagen
+                </Badge>
+              )}
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground truncate">
               {offer.title} · {clientName}

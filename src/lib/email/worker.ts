@@ -17,53 +17,31 @@ import { cancelOfferReminders } from "@/lib/actions/offer-reminders";
 
 /**
  * Versendet ein Angebot asynchron. Die UI hat bereits optimistisch SENT
- * gesetzt; hier wird nur tatsächlich gemailt. Erst nach endgültigem
- * Fehlschlag (alle Versuche) wird zurückgerollt, damit ein einmaliger
- * Mailserver-Aussetzer nicht sofort das Angebot auf FAILED kippt.
+ * gesetzt; hier wird nur tatsächlich gemailt. Der Rollback bei endgültigem
+ * Fehlschlag passiert im worker.on("failed")-Handler — dort ist
+ * job.attemptsMade final, im Processor noch nicht.
  */
 async function processOfferSendJob(job: Job<OfferSendJobData>) {
-  const { emailLogId, offerId, from, to, subject, text, html, attachments } =
-    job.data;
-  try {
-    await sendMailWithRetry({
-      from,
-      to,
-      subject,
-      text,
-      html,
-      attachments: attachments.map((a) => ({
-        filename: a.filename,
-        content: a.content,
-        encoding: a.encoding,
-        ...(a.cid ? { cid: a.cid } : {}),
-      })),
-    });
+  const { emailLogId, from, to, subject, text, html, attachments } = job.data;
+  await sendMailWithRetry({
+    from,
+    to,
+    subject,
+    text,
+    html,
+    attachments: attachments.map((a) => ({
+      filename: a.filename,
+      content: a.content,
+      encoding: a.encoding,
+      ...(a.cid ? { cid: a.cid } : {}),
+    })),
+  });
 
-    await db.emailLog.update({
-      where: { id: emailLogId },
-      data: { status: "SENT" },
-    });
-    return { success: true };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error(`Offer-send job ${job.id} failed:`, message);
-
-    const attempts = job.opts.attempts ?? 3;
-    if (job.attemptsMade >= attempts) {
-      // endgültig fehlgeschlagen → optimistisches SENT zurücknehmen
-      await db.emailLog
-        .update({ where: { id: emailLogId }, data: { status: "FAILED" } })
-        .catch(() => {});
-      await db.offer
-        .update({
-          where: { id: offerId },
-          data: { status: "DRAFT", sentAt: null },
-        })
-        .catch(() => {});
-      await cancelOfferReminders(offerId).catch(() => {});
-    }
-    throw error;
-  }
+  await db.emailLog.update({
+    where: { id: emailLogId },
+    data: { status: "SENT" },
+  });
+  return { success: true };
 }
 
 async function processCampaignEmailJob(
@@ -247,6 +225,31 @@ export function startEmailWorker() {
             data: { status: "FAILED", skippedReason: err.message },
           })
           .catch(() => {});
+      }
+    }
+    if (data && "type" in data && data.type === "offer-send") {
+      const attempts = job.opts.attempts ?? 3;
+      if (job.attemptsMade >= attempts) {
+        // endgültig fehlgeschlagen → optimistisches SENT zurückrollen und
+        // das Angebot für die UI als "Versand fehlgeschlagen" markieren.
+        await db.emailLog
+          .update({
+            where: { id: data.emailLogId },
+            data: { status: "FAILED" },
+          })
+          .catch(() => {});
+        await db.offer
+          .update({
+            where: { id: data.offerId },
+            data: {
+              status: "DRAFT",
+              sentAt: null,
+              sendFailedAt: new Date(),
+              sendError: err.message.slice(0, 500),
+            },
+          })
+          .catch(() => {});
+        await cancelOfferReminders(data.offerId).catch(() => {});
       }
     }
   });

@@ -381,6 +381,9 @@ export async function sendOffer(offerId: string, data: SendOfferData) {
       sentAt: new Date(),
       emailSubject: validated.subject,
       emailBody: signedBody,
+      // evtl. vorherigen Fehlversand zurücksetzen
+      sendFailedAt: null,
+      sendError: null,
     },
   });
 

@@ -652,6 +652,13 @@ model Offer {
   updatedAt DateTime  @updatedAt
   sentAt    DateTime?
 
+  // Asynchroner Versand: gesetzt, wenn der Hintergrund-Versand endgültig
+  // fehlgeschlagen ist (Angebot wurde auf DRAFT zurückgerollt). Dient der
+  // UI-Kennzeichnung "Versand fehlgeschlagen"; wird beim nächsten
+  // erfolgreichen (Neu-)Versand wieder geleert.
+  sendFailedAt DateTime?
+  sendError    String?
+
   @@index([clientId])
   @@index([status])
   @@map("offers")
