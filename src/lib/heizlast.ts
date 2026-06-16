@@ -20,6 +20,22 @@ export const BAUJAHR_CHIPS = [
 export type BaujahrChip = (typeof BAUJAHR_CHIPS)[number];
 
 /**
+ * Sanierungszustand des Gebäudes. Die Werte in SPEZ_HEIZLAST entsprechen der
+ * unsanierten Baseline je Baualtersklasse; Sanierung senkt die spezifische
+ * Heizlast. Faktoren abgeleitet aus deutschen Richtwerten
+ * (unsaniert ≈150 / teilsaniert ≈100 / saniert ≈70 W/m²).
+ */
+export const SANIERT_CHIPS = ["Nein", "Ja, 50%", "Ja"] as const;
+
+export type SaniertChip = (typeof SANIERT_CHIPS)[number];
+
+const SANIERT_FACTOR: Record<SaniertChip, number> = {
+  "Nein": 1.0,
+  "Ja, 50%": 0.7,
+  "Ja": 0.5,
+};
+
+/**
  * spezifische Heizlast in W/m² — Mittelwerte aus den BWP-Empfehlungen
  * (Verbraucherzentrale / EPISCOPE) für unsanierte bzw. teilsanierte
  * Gebäude des jeweiligen Baujahres. Frühere Werte (180/100/80/60/40) lagen
@@ -48,6 +64,7 @@ const TWW_PRO_PERSON_KW = 0.2;
 export type HeizlastInput = {
   wohnflaecheM2?: number;
   baujahr?: BaujahrChip | null;
+  saniert?: SaniertChip | null;
   jahresverbrauchKwh?: number;
   personen?: number;
 };
@@ -75,8 +92,10 @@ export function calcHeizlast(input: HeizlastInput): HeizlastEstimate {
   const personen = Math.max(0, input.personen ?? 0);
 
   const spez = input.baujahr ? SPEZ_HEIZLAST[input.baujahr] : null;
+  const sanierFactor = input.saniert ? (SANIERT_FACTOR[input.saniert] ?? 1) : 1;
 
-  const heizlastByArea = wohn > 0 && spez ? (wohn * spez) / 1000 : null;
+  const heizlastByArea =
+    wohn > 0 && spez ? (wohn * spez * sanierFactor) / 1000 : null;
   const heizlastByConsumption = verbrauch > 0 ? (verbrauch / VBH) * 0.9 : null;
 
   // Wenn beide Methoden vorliegen, hat der Verbrauchswert Vorrang — er
