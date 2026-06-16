@@ -45,6 +45,14 @@ const STATUS_CONFIG = {
 };
 
 export function EmailLogSection({ emailLogs, onReply }: EmailLogSectionProps) {
+  // Ungelesene eingegangene Mails nach oben — stabiler Sort behält innerhalb
+  // der Gruppen die vom Server gelieferte Reihenfolge (createdAt desc) bei.
+  const sorted = [...emailLogs].sort((a, b) => {
+    const aNew = a.direction === "INBOUND" && !a.read ? 1 : 0;
+    const bNew = b.direction === "INBOUND" && !b.read ? 1 : 0;
+    return bNew - aNew;
+  });
+
   return (
     <Card>
       <CardHeader>
@@ -58,17 +66,20 @@ export function EmailLogSection({ emailLogs, onReply }: EmailLogSectionProps) {
           <p className="text-sm text-muted-foreground">Keine E-Mails</p>
         ) : (
           <div className="space-y-3">
-            {emailLogs.map((log) => {
+            {sorted.map((log) => {
               const isInbound = log.direction === "INBOUND";
+              const isUnread = isInbound && !log.read;
               const config = STATUS_CONFIG[log.status];
               const DirIcon = isInbound ? ArrowDownLeft : ArrowUpRight;
               return (
                 <div
                   key={log.id}
                   className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${
-                    isInbound
-                      ? "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200/70 dark:border-blue-900/50"
-                      : "bg-card"
+                    isUnread
+                      ? "bg-blue-100 dark:bg-blue-900/50 border-blue-500 dark:border-blue-500 ring-2 ring-blue-500/50 shadow-sm"
+                      : isInbound
+                        ? "bg-blue-50/60 dark:bg-blue-950/20 border-blue-200/70 dark:border-blue-900/50"
+                        : "bg-card"
                   }`}
                 >
                   <DirIcon

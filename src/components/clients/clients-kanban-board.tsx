@@ -6,7 +6,7 @@ import { format, formatDistanceToNowStrict, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { ClientStatus } from "@prisma/client";
 import { MobileStatusTabs } from "./mobile-status-tabs";
-import { compareByLastCall } from "@/lib/client-sort";
+import { compareByInboxThenCall } from "@/lib/client-sort";
 import {
   Flame,
   Search,
@@ -116,7 +116,7 @@ export function ClientsKanbanBoard({
       NICHT_VERKAUFT: [],
     };
     for (const c of clients) g[c.status]?.push(c);
-    for (const status of STATUS_ORDER) g[status].sort(compareByLastCall);
+    for (const status of STATUS_ORDER) g[status].sort(compareByInboxThenCall);
     return g;
   }, [clients]);
 
@@ -312,7 +312,11 @@ function ClientCard({
       style={{
         borderTop: `3px solid ${color}`,
         ...(hasUnread
-          ? { boxShadow: "inset 3px 0 0 #2563eb" }
+          ? {
+              background: "#eff6ff",
+              borderColor: "#2563eb",
+              boxShadow: "inset 5px 0 0 #2563eb, 0 0 0 1px #2563eb",
+            }
           : {}),
       }}
     >
