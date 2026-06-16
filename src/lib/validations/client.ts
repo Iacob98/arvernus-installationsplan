@@ -27,6 +27,7 @@ export const clientSchema = z.object({
   ownership: z.string().nullable().optional(),
   buildingType: z.string().nullable().optional(),
   constructionYear: z.string().nullable().optional(),
+  saniert: z.string().nullable().optional(),
   householdSize: z.string().nullable().optional(),
   currentHeating: z.string().nullable().optional(),
   currentFuel: z.string().nullable().optional(),

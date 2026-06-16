@@ -9,6 +9,7 @@ export const offerInquirySchema = z.object({
   annualKwhGas: z.string().nullable().optional(),
   wohneinheiten: z.string().nullable().optional(),
   constructionYear: z.string().nullable().optional(),
+  saniert: z.string().nullable().optional(),
   householdSize: z.string().nullable().optional(),
   heizsystem: z.string().nullable().optional(),
   hotWaterIncluded: z.string().nullable().optional(),
