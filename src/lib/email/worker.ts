@@ -7,7 +7,7 @@ import {
   CampaignEmailJobData,
   OfferReminderJobData,
 } from "@/lib/queue";
-import { smtpTransporter } from "./smtp";
+import { sendMailWithRetry } from "./smtp";
 import { getLogoBase64 } from "@/lib/pdf/logo";
 import { getFileBuffer } from "@/lib/storage";
 import { BrandedEmail } from "./template";
@@ -41,7 +41,7 @@ async function processCampaignEmailJob(
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     };
 
-    await smtpTransporter.sendMail({
+    await sendMailWithRetry({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: to.join(", "),
       subject,
@@ -125,7 +125,7 @@ async function processEmailJob(job: Job<AnyEmailJobData>) {
       html = body.replace(/\n/g, "<br>");
     }
 
-    await smtpTransporter.sendMail({
+    await sendMailWithRetry({
       from: from || process.env.SMTP_FROM || process.env.SMTP_USER,
       to: to.join(", "),
       subject,

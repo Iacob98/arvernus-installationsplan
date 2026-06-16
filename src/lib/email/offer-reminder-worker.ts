@@ -1,7 +1,7 @@
 import { Job } from "bullmq";
 import { db } from "@/lib/db";
 import type { OfferReminderJobData } from "@/lib/queue";
-import { smtpTransporter } from "./smtp";
+import { sendMailWithRetry } from "./smtp";
 import { getLogoBase64 } from "@/lib/pdf/logo";
 import { getFileBuffer } from "@/lib/storage";
 import { renderBrandedHtmlEmail } from "./template";
@@ -142,7 +142,7 @@ export async function processOfferReminderJob(
   try {
     const fromAddress =
       process.env.SMTP_FROM || process.env.SMTP_USER || "";
-    await smtpTransporter.sendMail({
+    await sendMailWithRetry({
       from: sender.name
         ? buildFromHeader({ name: sender.name }, fromAddress)
         : fromAddress,

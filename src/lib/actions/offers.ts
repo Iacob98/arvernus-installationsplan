@@ -12,7 +12,7 @@ import {
 import { SERVICE_PRESETS, isCustomServiceId } from "@/lib/offer-services";
 import { renderOfferPdf, calculateTotals } from "@/lib/pdf/offer-renderer";
 import { uploadFile, deleteFile, getFileBuffer } from "@/lib/storage";
-import { smtpTransporter } from "@/lib/email/smtp";
+import { sendMailWithRetry } from "@/lib/email/smtp";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { render } from "@react-email/render";
@@ -368,7 +368,7 @@ export async function sendOffer(offerId: string, data: SendOfferData) {
   });
 
   try {
-    await smtpTransporter.sendMail({
+    await sendMailWithRetry({
       from: buildFromHeader(sender, fromAddress),
       to: offer.client.email,
       subject: validated.subject,

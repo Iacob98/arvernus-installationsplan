@@ -1,5 +1,5 @@
 import { Worker, Job } from "bullmq";
-import { ImapFlow } from "imapflow";
+import { ImapFlow, type FetchMessageObject } from "imapflow";
 import { simpleParser, type ParsedMail } from "mailparser";
 import { db } from "@/lib/db";
 import { redis, ImapJobData } from "@/lib/queue";
@@ -332,13 +332,28 @@ async function processImapJob(job: Job<ImapJobData>) {
     const lock = await client.getMailboxLock(folder);
 
     try {
-      const messages = client.fetch("1:*", {
-        envelope: true,
-        source: true,
-        uid: true,
-      });
+      // Nur ungelesene Mails laden. "1:*" würde bei großen Postfächern (hier
+      // ~7000 Mails / mehrere GB) den source-Download über socketTimeout
+      // hinaus ziehen → Verbindungsabbruch. Verarbeitete Mails werden via
+      // markSeenSafe auf \Seen gesetzt, zusätzlich greift die DB-Idempotenz.
+      //
+      // WICHTIG: Erst komplett einsammeln, dann verarbeiten. Während ein
+      // fetch()-Stream aktiv ist, dürfen KEINE weiteren IMAP-Kommandos
+      // (messageFlagsAdd/messageMove) laufen — das blockiert die Verbindung
+      // bis zum socketTimeout ("Socket timeout" → "Connection not available").
+      const messages: FetchMessageObject[] = [];
+      for await (const msg of client.fetch(
+        { seen: false },
+        {
+          envelope: true,
+          source: true,
+          uid: true,
+        },
+      )) {
+        messages.push(msg);
+      }
 
-      for await (const msg of messages) {
+      for (const msg of messages) {
         try {
           const messageId = msg.envelope?.messageId;
           if (!messageId) continue;
@@ -347,7 +362,12 @@ async function processImapJob(job: Job<ImapJobData>) {
           const existing = await db.imapProcessedEmail.findUnique({
             where: { messageId },
           });
-          if (existing) continue;
+          if (existing) {
+            // Bereits verarbeitet: \Seen setzen, damit die Mail nicht bei
+            // jedem Poll erneut über fetch({seen:false}) geladen wird.
+            await markSeenSafe(client, msg.uid);
+            continue;
+          }
 
           if (!msg.source) continue;
           const parsed = await simpleParser(msg.source);
