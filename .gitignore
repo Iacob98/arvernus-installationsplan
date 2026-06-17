@@ -48,3 +48,6 @@ next-env.d.ts
 
 # RLM local state
 .rlm/
+
+# OBI Partnercenter scraper session
+.obi-session.json

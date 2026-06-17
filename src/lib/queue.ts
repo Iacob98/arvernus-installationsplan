@@ -148,3 +148,27 @@ export async function addImapJob() {
     triggeredAt: new Date().toISOString(),
   });
 }
+
+// OBI Partnercenter lead import
+export type ObiImportJobData = {
+  triggeredAt: string;
+  /** Manual trigger from the UI vs. the scheduled poll. */
+  manual?: boolean;
+};
+
+export const obiQueue = new Queue("obi-import", {
+  connection: redis,
+  defaultJobOptions: {
+    // Scraping is heavy; don't auto-retry a failed run (the scheduler retries soon).
+    attempts: 1,
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 20 },
+  },
+});
+
+export async function addObiImportJob(data: Partial<ObiImportJobData> = {}) {
+  return obiQueue.add("import-obi", {
+    triggeredAt: new Date().toISOString(),
+    ...data,
+  });
+}

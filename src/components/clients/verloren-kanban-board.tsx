@@ -200,7 +200,10 @@ function Card({
               </span>
             </div>
           </div>
-          <span className="font-mono text-[10px] tabular-nums text-muted-foreground/70 shrink-0">
+          <span
+            className="font-mono text-[10px] tabular-nums text-muted-foreground/70 shrink-0"
+            suppressHydrationWarning
+          >
             vor {formatRel(client.updatedAt)}
           </span>
         </div>

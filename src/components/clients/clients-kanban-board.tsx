@@ -6,6 +6,7 @@ import { format, formatDistanceToNowStrict, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { ClientStatus } from "@prisma/client";
 import { MobileStatusTabs } from "./mobile-status-tabs";
+import { ObiImportButton } from "./obi-import-button";
 import { compareByInboxThenCall } from "@/lib/client-sort";
 import {
   Flame,
@@ -157,6 +158,7 @@ export function ClientsKanbanBoard({
               </SelectContent>
             </Select>
           )}
+          {isAdmin && <ObiImportButton />}
           <Button
             asChild
             size="sm"
@@ -379,7 +381,10 @@ function ClientCard({
           <ActivityCount icon={Phone} count={client.callsCount} title="Anrufe" />
           <ActivityCount icon={FileText} count={client.offersCount} title="Angebote" />
           <ActivityCount icon={Mail} count={client.emailsCount} title="E-Mails" />
-          <span className="ml-auto text-muted-foreground/60">
+          {/* Relative time uses "now", which differs by ~1s between SSR and
+              hydration (e.g. "vor 1s" → "vor 2s") for freshly-updated clients —
+              suppress the expected text mismatch. */}
+          <span className="ml-auto text-muted-foreground/60" suppressHydrationWarning>
             {formatRel(client.updatedAt)}
           </span>
         </div>

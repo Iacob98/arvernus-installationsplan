@@ -156,6 +156,7 @@ model Client {
   status          ClientStatus     @default(NEU)
   verlustgrund    String?
   source          String?
+  externalId      String?
   unsubscribed    Boolean          @default(false)
 
   ownership        String?
@@ -196,6 +197,10 @@ model Client {
   offers      Offer[]
   callLogs    CallLog[]
 
+  // Dedup key for external lead imports (e.g. OBI Partnercenter): one external
+  // lead id per source. NULLs are distinct in Postgres, so non-imported clients
+  // (externalId = NULL) never collide.
+  @@unique([source, externalId])
   @@map("clients")
 }
 
