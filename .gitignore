@@ -51,3 +51,11 @@ next-env.d.ts
 
 # OBI Partnercenter scraper session
 .obi-session.json
+.env.*
+node_modules/
+.venv/
+venv/
+__pycache__/
+.claude/
+*token*.json
+client_secret*.json
